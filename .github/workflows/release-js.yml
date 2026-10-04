@@ -68,12 +68,23 @@ jobs:
     # npm trusts this workflow file, and the job's id-token proves the run to npm
     - name: Publish to npm
       working-directory: packages/yt-dlp-wasm
-      run: pnpm publish --access public --provenance --no-git-checks
+      run: |
+        # A re-run after a failed release step finds the version already published
+        if npm view "$(node -p "require('./package.json').name")@$(node -p "require('./package.json').version")" version >/dev/null 2>&1; then
+          echo "This version is already on npm, skipping the publish."
+        else
+          pnpm publish --access public --provenance --no-git-checks
+        fi
     - name: Create GitHub release
       env:
         GH_TOKEN: ${{ github.token }}
         TAG: ${{ github.ref_name }}
         UPSTREAM: ${{ steps.version.outputs.upstream }}
       run: |
-        gh release create "${TAG}" --verify-tag --generate-notes --latest=false \
+        if gh release view "${TAG}" >/dev/null 2>&1; then
+          echo "The GitHub release for ${TAG} already exists."
+          exit 0
+        fi
+        gh release create "${TAG}" --verify-tag --generate-notes \
+          --title "yt-dlp-wasm ${TAG#js-v} (yt-dlp ${UPSTREAM})" \
           --notes "Based on yt-dlp ${UPSTREAM}. [Upstream release notes](https://github.com/yt-dlp/yt-dlp/releases/tag/${UPSTREAM})."
