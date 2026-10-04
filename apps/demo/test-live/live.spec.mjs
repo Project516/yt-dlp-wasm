@@ -12,6 +12,10 @@ const YOUTUBE_URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
 
 // Starts a download on the live page and returns the saved file's name and size
 async function download(page, url, kind) {
+  page.on('requestfailed', (request) => console.log(`request failed: ${request.url()} ${request.failure()?.errorText}`));
+  page.on('response', (response) => {
+    if (response.url().includes('yt-dlp-demo-proxy')) console.log(`proxy response: ${response.status()} ${response.url().slice(0, 120)}`);
+  });
   await page.goto(SITE);
   if (kind === 'audio') {
     await page.getByRole('radio', { name: 'Audio' }).check();
@@ -22,7 +26,10 @@ async function download(page, url, kind) {
   const alert = page.getByRole('alert');
   const saved = page.waitForEvent('download', { timeout: DOWNLOAD_TIMEOUT });
   const failed = alert.waitFor({ state: 'visible', timeout: DOWNLOAD_TIMEOUT }).then(async () => {
-    throw new Error(`The demo showed an error: ${(await alert.innerText()).replace(/\s+/g, ' ')}`);
+    const message = (await alert.innerText()).replace(/\s+/g, ' ');
+    await page.locator('#log-panel summary').click();
+    const log = await page.locator('#log').innerText();
+    throw new Error(`The demo showed an error: ${message}\nLog tail:\n${log.slice(-1500)}`);
   });
   saved.catch(() => {});
   failed.catch(() => {});

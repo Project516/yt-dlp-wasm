@@ -61,9 +61,9 @@ jobs:
         done
         args=(--collect-only -q -m download test/test_download.py)
         if [ -n "${FILTER}" ]; then args+=(-k "${FILTER}"); fi
+        python -m pytest "${args[@]}" > collected.txt || { cat collected.txt; exit 1; }
         # The *_all tests only rerun an extractor's other cases
-        python -m pytest "${args[@]}" \
-          | { grep '^test/test_download.py::' || true; } \
+        { grep '^test/test_download.py::' collected.txt || true; } \
           | { grep -v '_all$' || true; } \
           | LC_ALL=C sort > ids.txt
         if [ "${LIMIT}" -gt 0 ]; then
@@ -73,6 +73,7 @@ jobs:
         total="$(wc -l < ids.txt)"
         if [ "${total}" -eq 0 ]; then
           echo "::error::No test cases matched."
+          tail -n 20 collected.txt
           exit 1
         fi
         count="$(( SHARDS < total ? SHARDS : total ))"
