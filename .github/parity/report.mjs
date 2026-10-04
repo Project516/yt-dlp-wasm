@@ -55,6 +55,10 @@ const REASONS = [
   [/HTTP Error (\d{3})/, (match) => `HTTP ${match[1]}`],
   [/Timeout|timed out/i, () => 'timeout'],
   [/TransportError|Failed to fetch|NetworkError|Connection (?:reset|refused|aborted)/i, () => 'network error'],
+  [/Unsupported URL/, () => 'Unsupported URL'],
+  [/geo.?restrict|not available in your country/i, () => 'geo restricted'],
+  [/\(caused by (\w+)/, (match) => `caused by ${match[1]}`],
+  [/Unable to extract/, () => 'Unable to extract'],
   [/AssertionError/, () => 'AssertionError (extracted data differs)'],
   [/ExtractorError/, () => 'ExtractorError'],
 ];

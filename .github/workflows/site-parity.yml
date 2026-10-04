@@ -123,7 +123,7 @@ jobs:
       env:
         SHARD: ${{ matrix.shard }}
         SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
-        TIMEOUT_SECONDS: 120
+        TIMEOUT_SECONDS: 0.4
       run: |
         set -uo pipefail
         junit="${GITHUB_WORKSPACE}/junit/native-${SHARD}.xml"
@@ -182,15 +182,19 @@ jobs:
       env:
         SHARD: ${{ matrix.shard }}
         SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
-        YTDLP_TEST_TIMEOUT: 120
+        YTDLP_TEST_TIMEOUT: 0.4
       run: |
         set -uo pipefail
         junit="${GITHUB_WORKSPACE}/junit/wasm-${SHARD}.xml"
         mapfile -t ids < <(awk -v n="${SHARD_COUNT}" -v i="${SHARD}" '(NR - 1) % n == i' "${GITHUB_WORKSPACE}/ids.txt")
-        status=0
-        node test-harness/run-tests.mjs --flaky \
-          --pytest-args="--junitxml=${junit} -p no:cacheprovider" \
-          "${ids[@]}" 2>&1 | cut -c1-1500 || status=$?
+        # Pyodide sometimes dies while it starts, so a run without a report gets one more try
+        for _ in 1 2; do
+          status=0
+          node test-harness/run-tests.mjs --flaky \
+            --pytest-args="--junitxml=${junit} -p no:cacheprovider" \
+            "${ids[@]}" 2>&1 | cut -c1-1500 || status=$?
+          if [ -f "${junit}" ]; then break; fi
+        done
         # A failing case is data. Only a run that wrote no report fails the job
         [ -f "${junit}" ] || exit "${status}"
     - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
