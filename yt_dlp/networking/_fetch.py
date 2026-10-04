@@ -6,6 +6,8 @@ if sys.platform != 'emscripten':
     raise ImportError('The fetch request handler is only available on emscripten')
 
 import io
+import json
+import os
 import string
 import urllib.parse
 import urllib.request
@@ -69,8 +71,8 @@ _JS = run_js('''({
     },
 })''')
 
-# Browsers return opaque responses for manual redirects, so only Node.js can follow them in Python
-_FOLLOW_REDIRECTS_IN_PYTHON = _JS.isNode
+_PROXY_ENV = 'YTDLP_CORS_PROXY'
+_PROXY_KEY_ENV = 'YTDLP_CORS_PROXY_KEY'
 
 _REDIRECT_STATUSES = (301, 302, 303, 307, 308)
 _MAX_REDIRECTIONS = 10
@@ -277,6 +279,11 @@ class FetchRH(RequestHandler):
         url = request.url
         data = _read_request_data(request.data)
         headers = {k: v for k, v in self._get_headers(request).items() if k.title() != 'Content-Length'}
+        proxy = os.environ.get(_PROXY_ENV)
+        if proxy and urllib.parse.urlparse(proxy).scheme not in ('http', 'https'):
+            raise RequestError(f'{_PROXY_ENV} must be an http or https URL, not {proxy!r}')
+        # Browsers return opaque responses for manual redirects. A proxy reports them as data.
+        follow_in_python = _JS.isNode or bool(proxy)
         origin_req_host = urllib.request.Request(url).origin_req_host
 
         visited = {}
@@ -290,10 +297,10 @@ class FetchRH(RequestHandler):
             if cookie := cookie_request.get_header('Cookie'):
                 request_headers['Cookie'] = cookie
 
-            res = self._fetch(url, method, request_headers, data, timeout)
+            res = self._fetch(url, method, request_headers, data, timeout, follow_in_python, proxy)
             cookiejar.extract_cookies(_CookieResponse(res.headers), cookie_request)
 
-            if not (_FOLLOW_REDIRECTS_IN_PYTHON and res.status in _REDIRECT_STATUSES):
+            if not (follow_in_python and res.status in _REDIRECT_STATUSES):
                 break
             location = res.headers.get('Location')
             if not location:
@@ -324,25 +331,35 @@ class FetchRH(RequestHandler):
             raise HTTPError(res, redirect_loop=redirect_loop)
         return res
 
-    def _fetch(self, url, method, headers, data, timeout):
+    def _fetch(self, url, method, headers, data, timeout, follow_in_python, proxy):
         init = {
             'method': method,
-            'headers': list(headers.items()),
-            'redirect': 'manual' if _FOLLOW_REDIRECTS_IN_PYTHON else 'follow',
+            'redirect': 'manual' if follow_in_python else 'follow',
             'cache': 'no-store',
         }
+        fetch_url = url
+        if proxy:
+            fetch_url = f'{proxy}?url={urllib.parse.quote(url, safe="")}'
+            headers = {'X-Ytdlp-Headers': json.dumps(headers)}
+            if key := os.environ.get(_PROXY_KEY_ENV):
+                headers['X-Ytdlp-Key'] = key
+        init['headers'] = list(headers.items())
         if data is not None:
             init['body'] = data
 
         try:
-            res = run_sync(_JS.fetch(url, to_js(init, dict_converter=js.Object.fromEntries), int(timeout * 1000)))
+            res = run_sync(_JS.fetch(fetch_url, to_js(init, dict_converter=js.Object.fromEntries), int(timeout * 1000)))
         except JsException as e:
             if getattr(e, 'invalidRequest', False):
                 raise RequestError(_js_error_message(e), cause=e) from e
             _handle_js_error(e)
 
+        status, reason, raw_headers = res.status, res.reason, res.headers.to_py()
+        if proxy:
+            status, reason, raw_headers = self._unwrap_proxy_response(res, int(timeout * 1000))
+
         response_headers = Message()
-        for name, value in res.headers.to_py():
+        for name, value in raw_headers:
             response_headers.add_header(name, value)
 
         # fetch decodes the body, so Content-Length no longer describes it
@@ -355,8 +372,22 @@ class FetchRH(RequestHandler):
 
         return FetchResponseAdapter(
             FetchBody(res.reader, res.controller, int(timeout * 1000), expected_length),
-            url=url if _FOLLOW_REDIRECTS_IN_PYTHON else (res.url or url),
-            headers=response_headers, status=res.status, reason=res.reason or None)
+            url=url if follow_in_python else (res.url or url),
+            headers=response_headers, status=status, reason=reason or None)
+
+    @staticmethod
+    def _unwrap_proxy_response(res, timeout_ms):
+        proxy_headers = {name.lower(): value for name, value in res.headers.to_py()}
+        if 'x-ytdlp-status' not in proxy_headers:
+            body = FetchBody(res.reader, res.controller, timeout_ms, None)
+            detail = body.read(500).decode(errors='replace')
+            body.close()
+            error_class = TransportError if res.status >= 500 else RequestError
+            raise error_class(f'CORS proxy error {res.status}: {detail.strip() or res.reason}')
+        return (
+            int(proxy_headers['x-ytdlp-status']),
+            proxy_headers.get('x-ytdlp-reason'),
+            json.loads(proxy_headers.get('x-ytdlp-response-headers', '[]')))
 
 
 @register_preference(FetchRH)

@@ -1,0 +1,26 @@
+name = "yt-dlp-wasm-proxy"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Public demo. Locked to one origin and rate limited per client IP.
+[env.demo]
+name = "yt-dlp-wasm-proxy-demo"
+
+[env.demo.vars]
+ALLOWED_ORIGINS = "https://project516.dev"
+
+[[env.demo.ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "516001"
+
+[env.demo.ratelimits.simple]
+limit = 100
+period = 60
+
+# Personal proxy. Needs the ACCESS_KEY secret.
+[env.personal]
+name = "yt-dlp-wasm-proxy"
+
+[env.personal.vars]
+ALLOWED_ORIGINS = "https://project516.dev,http://localhost:*,http://127.0.0.1:*"
+REQUIRE_ACCESS_KEY = "true"
