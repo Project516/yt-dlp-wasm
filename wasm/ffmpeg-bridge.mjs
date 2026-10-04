@@ -41,12 +41,14 @@ function resolvePath(cwd, file) {
 
 const dirname = (file) => file.slice(0, file.lastIndexOf('/')) || '/';
 
-function modeOf(FS, file) {
-  try {
-    return FS.stat(file).mode;
-  } catch {
-    return 0;
-  }
+function isFile(FS, path) {
+  const { exists, object } = FS.analyzePath(path);
+  return exists && FS.isFile(object.mode);
+}
+
+function isDir(FS, path) {
+  const { exists, object } = FS.analyzePath(path);
+  return exists && FS.isDir(object.mode);
 }
 
 // MEMFS contents are returned without a copy.
@@ -58,7 +60,7 @@ function readBytes(FS, file) {
 function* filesIn(FS, dir) {
   for (const name of FS.readdir(dir)) {
     const file = dir === '/' ? `/${name}` : `${dir}/${name}`;
-    if (FS.isFile(modeOf(FS, file))) yield file;
+    if (isFile(FS, file)) yield file;
   }
 }
 
@@ -94,7 +96,7 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
       dirs.add(dir);
     };
     const copyIn = (file) => {
-      if (copied.has(file) || !pyFS.isFile(modeOf(pyFS, file))) return false;
+      if (copied.has(file) || !isFile(pyFS, file)) return false;
       mirrorDir(dirname(file));
       coreFS.writeFile(file, readBytes(pyFS, file), { canOwn: true });
       const { contents, usedBytes } = coreFS.lookupPath(file).node;
@@ -104,15 +106,17 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
 
     mirrorDir(cwd);
     coreFS.chdir(cwd);
-    const concatList = args.findIndex((arg, i) => arg === '-f' && args[i + 1] === 'concat');
+    // `-f concat` applies to the next `-i`
+    let inputFormat;
     for (const [i, arg] of args.entries()) {
+      if (arg === '-f') inputFormat = args[i + 1];
       if (arg.startsWith('-')) continue;
+      const isConcatList = args[i - 1] === '-i' && inputFormat === 'concat';
+      if (args[i - 1] === '-i') inputFormat = undefined;
       const file = resolvePath(cwd, arg.replace(/^file:/, ''));
       if (copyIn(file)) {
-        if (concatList >= 0 && args.indexOf('-i', concatList) === i - 1) {
-          concatEntries(readBytes(pyFS, file), dirname(file)).forEach(copyIn);
-        }
-      } else if (pyFS.isDir(modeOf(pyFS, dirname(file)))) {
+        if (isConcatList) concatEntries(readBytes(pyFS, file), dirname(file)).forEach(copyIn);
+      } else if (isDir(pyFS, dirname(file))) {
         mirrorDir(dirname(file));
       }
     }
