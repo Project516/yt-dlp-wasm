@@ -33,7 +33,7 @@ import { createYtDlp } from '@project516/yt-dlp-wasm';
 
 const ytdlp = await createYtDlp({ corsProxy: 'https://your-proxy.workers.dev/' });
 const info = await ytdlp.extractInfo('https://example.com/video');
-const [file] = await ytdlp.download(info.webpage_url, { format: 'bestaudio' }, {
+const [file] = await ytdlp.download(info, { format: 'bestaudio' }, {
   onProgress: ({ status, downloadedBytes, totalBytes }) => console.log(status, downloadedBytes, totalBytes),
 });
 const url = URL.createObjectURL(new Blob([file.data], { type: file.mimeType }));
@@ -64,7 +64,7 @@ await ytdlp.close();
 - `env`: environment variables for Python.
 - `onLog(line, stream)`: receives each line yt-dlp writes to stdout or stderr.
 
-The returned object has `run(args)`, which takes the arguments of `yt-dlp` and resolves with the exit code, `extractInfo(url, options)`, which resolves with the info dict, `download(url, options, { onProgress, outputDir })`, `close()` and `terminate()`. The `options` are the keys of yt-dlp's Python `YoutubeDL` options, as JSON. Calls on one instance run one at a time.
+The returned object has `run(args)`, which takes the arguments of `yt-dlp` and resolves with the exit code, `extractInfo(url, options)`, which resolves with the info dict, `download(urlOrInfo, options, { onProgress, outputDir })`, which also takes the info dict from `extractInfo` so the page is not extracted twice, `close()` and `terminate()`. The `options` are the keys of yt-dlp's Python `YoutubeDL` options, as JSON. Calls on one instance run one at a time.
 
 A browser `download` resolves with `{ name, data, mimeType }` for each file, with `data` a `Uint8Array` moved out of the worker without a copy, and frees the file from memory. A Node.js `download` resolves with `{ name, path, size, mimeType }`. Progress events carry `status`, `downloadedBytes`, `totalBytes`, `speed` and `eta`, and postprocessor events carry `postprocessor` and `status`. Types are in `src/index.d.ts`.
 
