@@ -39,6 +39,8 @@ export function createTestHost(root) {
       child = undefined;
     });
     child.on('error', (error) => child.emit('exit', error.message));
+    // A write racing the child's exit fails here; the exit handler rejects the request
+    child.stdin.on('error', () => {});
     return child;
   }
 
