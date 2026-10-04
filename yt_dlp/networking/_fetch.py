@@ -280,6 +280,8 @@ class FetchRH(RequestHandler):
         data = _read_request_data(request.data)
         headers = {k: v for k, v in self._get_headers(request).items() if k.title() != 'Content-Length'}
         proxy = os.environ.get(_PROXY_ENV)
+        if proxy and urllib.parse.urlparse(proxy).scheme not in ('http', 'https'):
+            raise RequestError(f'{_PROXY_ENV} must be an http or https URL, not {proxy!r}')
         # Browsers return opaque responses for manual redirects. A proxy reports them as data.
         follow_in_python = _JS.isNode or bool(proxy)
         origin_req_host = urllib.request.Request(url).origin_req_host

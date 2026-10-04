@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs yt-dlp on Pyodide: `node cli.mjs [yt-dlp args]` acts like `yt-dlp [args]`.
-// The current directory is mounted at its real path, so only paths under it are writable.
+// The current directory and the repo are mounted at their real paths. Other paths live in memory.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHost } from './host-node.mjs';
