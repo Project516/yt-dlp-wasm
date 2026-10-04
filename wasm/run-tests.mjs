@@ -34,7 +34,8 @@ py.globals.set('ARGV', py.toPy(process.argv.slice(2)));
 const code = await py.runPythonAsync(`
 import os, runpy, sys
 os.chdir(ROOT)
-sys.path.insert(0, ROOT)
+sys.path[:0] = [ROOT, os.path.join(ROOT, 'wasm')]
+os.environ['PYTEST_PLUGINS'] = 'pytest_wasm'
 sys.argv = ['devscripts/run_tests.py', *ARGV]
 try:
     runpy.run_path('devscripts/run_tests.py', run_name='__main__')

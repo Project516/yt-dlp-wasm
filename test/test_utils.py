@@ -2052,6 +2052,7 @@ Line 1
         self.assertEqual(Config.hide_login_info(['--username=foo']),
                          ['--username=PRIVATE'])
 
+    @unittest.skipIf(sys.platform == 'emscripten', 'wasm has no other processes to hold a lock')
     def test_locked_file(self):
         TEXT = 'test_locked_file\n'
         FILE = 'test_locked_file.ytdl'
