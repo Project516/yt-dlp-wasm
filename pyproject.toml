@@ -77,7 +77,7 @@ pin = [
     "pycparser==3.0 ; implementation_name != 'PyPy' and implementation_name != 'cpython'",
     "pycryptodomex==3.23.0",
     "requests==2.34.2",
-    "urllib3==2.7.0",
+    "urllib3==2.8.0",
     "websockets==16.1.1 ; python_full_version < '3.11'",
     "websockets==17.0.1 ; python_full_version >= '3.11'",
     "yt-dlp-ejs==0.8.0",
