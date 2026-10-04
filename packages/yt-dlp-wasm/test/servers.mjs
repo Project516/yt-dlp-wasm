@@ -32,7 +32,7 @@ function listen(handler) {
 
 function sendFile(req, res, file, headers = {}) {
   fs.stat(file, (error, stat) => {
-    if (error || !stat.isFile()) return res.writeHead(404).end();
+    if (error || !stat.isFile()) return res.writeHead(404, headers).end();
     res.writeHead(200, {
       ...headers,
       'Content-Type': TYPES[path.extname(file)] ?? 'application/octet-stream',
