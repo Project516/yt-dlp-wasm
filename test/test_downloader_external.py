@@ -192,6 +192,7 @@ class TestAria2cFD(unittest.TestCase):
             assert f'--load-cookies={downloader._cookies_tempfile}' in cmd
 
 
+@unittest.skipIf(sys.platform == 'emscripten', 'ffmpeg.wasm cannot open network inputs')
 @unittest.skipUnless(FFmpegFD.available(), 'ffmpeg not found')
 class TestFFmpegFD(unittest.TestCase):
     _args = []

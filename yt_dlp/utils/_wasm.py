@@ -15,9 +15,29 @@ def register_program(name, program):
     _PROGRAMS[name] = program
 
 
+def _host_ffmpeg(name):
+    """Returns a program that runs ffmpeg or ffprobe on the host, or None if it can't"""
+    try:
+        import yt_dlp_host
+        from pyodide.ffi import can_run_sync, run_sync, to_js
+    except ImportError:
+        return None
+    if not hasattr(yt_dlp_host, 'run_ffmpeg') or not can_run_sync():
+        return None
+
+    def program(args, stdin, cwd, env):
+        result = run_sync(yt_dlp_host.run_ffmpeg(name, to_js(args[1:]), cwd or os.getcwd(), to_js(stdin)))
+        return result.stdout.to_bytes(), result.stderr.to_bytes(), result.code
+    return program
+
+
 def find_program(name):
     name = os.fspath(name)
-    return _PROGRAMS.get(name) or _PROGRAMS.get(os.path.basename(name))
+    basename = os.path.basename(name)
+    program = _PROGRAMS.get(name) or _PROGRAMS.get(basename)
+    if not program and basename in ('ffmpeg', 'ffprobe'):
+        program = _host_ffmpeg(basename)
+    return program
 
 
 class HostPopen:

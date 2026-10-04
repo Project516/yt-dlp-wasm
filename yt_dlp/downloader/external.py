@@ -380,6 +380,9 @@ class FFmpegFD(ExternalFD):
 
     @classmethod
     def available(cls, path=None):
+        # ffmpeg.wasm can't open network inputs
+        if sys.platform == 'emscripten':
+            return False
         # TODO: Fix path for ffmpeg
         # Fixme: This may be wrong when --ffmpeg-location is used
         return FFmpegPostProcessor().available
