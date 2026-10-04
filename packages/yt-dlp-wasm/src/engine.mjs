@@ -12,7 +12,15 @@ export async function createEngine({ py, wheel, createHost }) {
 
   let sink = () => {};
   py.registerJsModule('yt_dlp_host', createHost({ FS: py.FS }));
-  py.registerJsModule('yt_dlp_wasm_events', { emit: (json) => sink(JSON.parse(json)) });
+  // A throwing progress handler must not abort the download running in Python
+  const emit = (json) => {
+    try {
+      sink(JSON.parse(json));
+    } catch (error) {
+      console.error('yt-dlp-wasm: event handler failed:', error);
+    }
+  };
+  py.registerJsModule('yt_dlp_wasm_events', { emit });
   py.globals.set('_api_source', PYTHON_API);
   await py.runPythonAsync(`
 import sys, types
