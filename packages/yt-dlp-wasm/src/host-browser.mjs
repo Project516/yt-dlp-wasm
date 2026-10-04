@@ -1,9 +1,9 @@
 // The `yt_dlp_host` module Python imports under Pyodide in a browser.
 // Mirrors host-node.mjs. Pass `coreUrl` to load the ffmpeg core from somewhere else.
 import { coreFactory, createFfmpegRunner } from './ffmpeg-bridge.mjs';
+import { FFMPEG_CORE_VERSION } from './versions.mjs';
 
-const CORE_VERSION = '0.13.1';
-const CORE_URL = `https://cdn.jsdelivr.net/npm/@project516/ffmpeg-wasm-core@${CORE_VERSION}/dist/esm`;
+const CORE_URL = `https://cdn.jsdelivr.net/npm/@project516/ffmpeg-wasm-core@${FFMPEG_CORE_VERSION}/dist/esm`;
 const JS_TIMEOUT_MS = 120_000;
 
 // Captures console.log as stdout and cuts off network access.
@@ -38,6 +38,7 @@ function runJs(script) {
 
 // `FS` is Pyodide's filesystem.
 export function createHost({ FS, coreUrl = CORE_URL }) {
+  coreUrl = coreUrl.replace(/\/$/, '');
   let factory;
   const createCore = async (options) => {
     factory ??= (async () => {

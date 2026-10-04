@@ -1,18 +1,46 @@
 {
   "name": "@project516/yt-dlp-wasm",
-  "private": true,
+  "version": "0.1.0",
+  "description": "yt-dlp running unmodified on Pyodide, in browsers and Node.js",
+  "license": "Unlicense",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Project516/yt-dlp-wasm.git",
+    "directory": "packages/yt-dlp-wasm"
+  },
+  "homepage": "https://github.com/Project516/yt-dlp-wasm#use-it-as-a-library",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "browser": "./src/browser.mjs",
+      "node": "./src/node.mjs",
+      "default": "./src/browser.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./src/index.d.ts",
   "bin": {
     "yt-dlp-wasm": "./bin/cli.mjs"
   },
+  "files": [
+    "bin",
+    "src",
+    "dist"
+  ],
   "engines": {
     "node": ">=25"
   },
   "scripts": {
-    "test": "node test-harness/run-tests.mjs core"
+    "build": "node scripts/build-wheel.mjs",
+    "prepack": "pnpm build",
+    "test:pyodide": "node test-harness/run-tests.mjs core"
   },
   "dependencies": {
     "@project516/ffmpeg-wasm-core": "0.13.1",
     "pyodide": "314.0.7"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

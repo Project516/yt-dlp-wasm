@@ -12,7 +12,7 @@ const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-ser
 
 // Serves the CORS proxy worker in-process. Node.js sends no Origin, so `origin`
 // stands in for the browser's.
-function createProxies(root) {
+export function createProxies(root) {
   const servers = new Map();
   let nextId = 0;
 

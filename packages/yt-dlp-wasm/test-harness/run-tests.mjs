@@ -1,10 +1,11 @@
 // Runs devscripts/run_tests.py inside Pyodide. Arguments pass through, e.g.
-//   node run-tests.mjs core
-//   node run-tests.mjs test/test_utils.py --pytest-args='-x'
+//   node test-harness/run-tests.mjs core
+//   node test-harness/run-tests.mjs test/test_utils.py --pytest-args='-x'
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadPyodide } from 'pyodide';
+import { installDependencies } from '../src/dependencies.mjs';
 import { createHost } from '../src/host-node.mjs';
-import { loadYtdlpPyodide } from '../src/load.mjs';
 import { createTestHost } from './test-host.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -14,7 +15,8 @@ for (const key of ['CI', 'GITHUB_ACTIONS', 'HATCH_TEST_ARGS']) {
   if (process.env[key] !== undefined) env[key] = process.env[key];
 }
 
-const py = await loadYtdlpPyodide({ env, locked: ['pytest'], pypi: ['pytest-rerunfailures==16.4'] });
+const py = await loadPyodide({ env });
+await installDependencies(py, { locked: ['pytest'], pypi: ['pytest-rerunfailures==16.4'] });
 py.FS.mkdirTree(root);
 py.mountNodeFS(root, root);
 py.registerJsModule('yt_dlp_host', createHost({ FS: py.FS }));
