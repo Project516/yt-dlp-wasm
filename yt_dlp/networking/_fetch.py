@@ -76,6 +76,7 @@ _REDIRECT_STATUSES = (301, 302, 303, 307, 308)
 _MAX_REDIRECTIONS = 10
 _MAX_REPEATS = 4
 
+# Node.js codes. Browsers report every TLS failure as a generic network error.
 _CERTIFICATE_ERROR_CODES = frozenset({
     'CERT_HAS_EXPIRED',
     'CERT_NOT_YET_VALID',
@@ -135,6 +136,16 @@ def _redirect_url(url, location):
     location = urllib.parse.quote(
         urllib.parse.urlunparse(parts), encoding='iso-8859-1', safe=string.punctuation)
     return normalize_url(urllib.parse.urljoin(url, location))
+
+
+def _should_strip_auth(old_url, new_url):
+    # Same policy as requests: keep it within an origin and on an http to https upgrade
+    old, new = urllib.parse.urlsplit(old_url), urllib.parse.urlsplit(new_url)
+    if old.hostname != new.hostname:
+        return True
+    if old.scheme == 'http' and new.scheme == 'https' and old.port in (80, None) and new.port in (443, None):
+        return False
+    return old.scheme != new.scheme or old.port != new.port
 
 
 class _CookieResponse:
@@ -287,7 +298,10 @@ class FetchRH(RequestHandler):
             location = res.headers.get('Location')
             if not location:
                 break
-            new_url = _redirect_url(url, location)
+            try:
+                new_url = _redirect_url(url, location)
+            except ValueError:
+                break
             if urllib.parse.urlparse(new_url).scheme not in self._SUPPORTED_URL_SCHEMES:
                 break
             if visited.get(new_url, 0) >= _MAX_REPEATS or len(visited) >= _MAX_REDIRECTIONS:
@@ -300,6 +314,8 @@ class FetchRH(RequestHandler):
             if new_method != method:
                 data = None
                 remove_headers.extend(['Content-Length', 'Content-Type'])
+            if _should_strip_auth(url, new_url):
+                remove_headers.append('Authorization')
             headers = {k: v for k, v in headers.items() if k.title() not in remove_headers}
             method, url = new_method, new_url
             res.close()

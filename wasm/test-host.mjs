@@ -19,7 +19,13 @@ export function createTestHost(root) {
       stdio: ['pipe', 'pipe', 'inherit'],
     });
     readline.createInterface({ input: child.stdout }).on('line', (line) => {
-      const reply = JSON.parse(line);
+      let reply;
+      try {
+        reply = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (!pending.has(reply?.id)) return;
       const { resolve, reject } = pending.get(reply.id);
       pending.delete(reply.id);
       if (reply.error) reject(new Error(reply.error));
