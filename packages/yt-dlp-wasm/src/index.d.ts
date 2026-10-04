@@ -63,7 +63,8 @@ export interface YtDlp {
   run(args: string[]): Promise<number>;
   /** Resolves with the info dict. */
   extractInfo(url: string, options?: YtDlpJsonOptions): Promise<Record<string, any>>;
-  download(url: string, options?: YtDlpJsonOptions, download?: DownloadOptions): Promise<Array<BrowserFile | NodeFile>>;
+  /** `url` may also be an info dict from `extractInfo`, which skips extracting the page again. */
+  download(url: string | Record<string, unknown>, options?: YtDlpJsonOptions, download?: DownloadOptions): Promise<Array<BrowserFile | NodeFile>>;
   /** Finishes the calls in progress, then releases Pyodide. */
   close(): Promise<void>;
   /** Stops now. Calls in progress reject. */

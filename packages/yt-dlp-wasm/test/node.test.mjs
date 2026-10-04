@@ -50,6 +50,13 @@ describe('yt-dlp-wasm in Node.js', () => {
     assert.equal(finished.downloadedBytes, file.size);
   });
 
+  test('download takes an info dict from extractInfo', async () => {
+    const info = await ytdlp.extractInfo(`${media.url}/tiny.mp4`);
+    const files = await ytdlp.download(info, { outtmpl: 'from-info.%(ext)s' }, { outputDir });
+    assert.deepEqual(files.map(({ name }) => name), ['from-info.mp4']);
+    assert.deepEqual(fs.readFileSync(files[0].path), fs.readFileSync(path.join(FIXTURES, 'tiny.mp4')));
+  });
+
   test('download runs postprocessors on ffmpeg.wasm', async () => {
     const events = [];
     const files = await ytdlp.download(`${media.url}/tiny.mp4`, {

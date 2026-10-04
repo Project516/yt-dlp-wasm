@@ -3,6 +3,7 @@
 export const PYTHON_API = String.raw`
 import json
 import os
+import tempfile
 import time
 import traceback
 
@@ -78,8 +79,18 @@ def download(request):
         'post_hooks': [files.append],
     }
     options['paths'] = {**options.get('paths', {}), 'home': request['home']}
+    target = request['url']
     with yt_dlp.YoutubeDL(options) as ydl:
-        ydl.download([request['url']])
+        if isinstance(target, dict):
+            # An info dict from extractInfo, so the page isn't extracted again
+            with tempfile.NamedTemporaryFile('w', suffix='.info.json', encoding='utf-8', delete=False) as f:
+                json.dump(target, f)
+            try:
+                ydl.download_with_info_file(f.name)
+            finally:
+                os.remove(f.name)
+        else:
+            ydl.download([target])
     return list(dict.fromkeys(files))
 
 
