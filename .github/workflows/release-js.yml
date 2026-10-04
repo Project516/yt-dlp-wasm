@@ -54,6 +54,13 @@ jobs:
       timeout-minutes: 15
       working-directory: packages/yt-dlp-wasm
       run: pnpm test
+    - name: Install Chromium
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm exec playwright install --with-deps chromium
+    - name: Run browser tests
+      timeout-minutes: 20
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm test:browser
     # npm trusts this workflow file, and the job's id-token proves the run to npm
     - name: Publish to npm
       working-directory: packages/yt-dlp-wasm
