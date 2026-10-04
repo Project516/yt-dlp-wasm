@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPyodide } from 'pyodide';
 import { createHost } from './host-node.mjs';
+import { createTestHost } from './test-host.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -26,6 +27,7 @@ const py = await loadPyodide({ env });
 py.FS.mkdirTree(root);
 py.mountNodeFS(root, root);
 py.registerJsModule('yt_dlp_host', createHost());
+py.registerJsModule('yt_dlp_test_host', createTestHost(root));
 await py.loadPackage(LOCKED, { messageCallback: () => {} });
 await py.pyimport('micropip').install(PYPI);
 

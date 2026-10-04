@@ -27,6 +27,9 @@ from ..dependencies import websockets
 from ..socks import ProxyError as SocksProxyError
 from ..utils import int_or_none
 
+if sys.platform == 'emscripten':
+    raise ImportError('websockets cannot be used without sockets')
+
 if not websockets:
     raise ImportError('websockets is not installed')
 

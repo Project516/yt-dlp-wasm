@@ -32,6 +32,12 @@ test server started on a thread. Adapt it so it still checks the same behavior
 where possible. Otherwise skip it on emscripten with a reason that names the
 limit. Never skip a test because a feature is unfinished.
 
+Test HTTP servers cannot run in Pyodide, which has no sockets or threads.
+`start_http_server` in `test/helper.py` runs them in the sidecar instead. The
+`wasm/test-host.mjs` module starts it with `python3`, or with the interpreter in
+`YTDLP_TEST_PYTHON`. That interpreter needs the packages in
+`bundle/requirements/test.txt` and `default.txt`.
+
 Heavy builds and full test runs go to GitHub Actions. On the Raspberry Pi,
 run single test files only, wrapped in the memguard script.
 
@@ -57,3 +63,5 @@ run single test files only, wrapped in the memguard script.
 - **ffmpeg bridge**: the code that runs `ffmpeg` and `ffprobe` commands on
   ffmpeg.wasm instead of a subprocess.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
+- **Sidecar**: the CPython process that serves the test suite's HTTP servers
+  while the tests run in Pyodide.
