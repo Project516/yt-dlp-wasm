@@ -4,7 +4,7 @@ Browsers block most requests yt-dlp needs to make. This Cloudflare Worker
 fetches them for you and hands the results back to the page, including cookies
 and redirects. Cloudflare's free plan is enough for personal use.
 
-You only need this for the browser. In Node.js, `wasm/cli.mjs` makes requests
+You only need this for the browser. In Node.js, `yt-dlp-wasm` makes requests
 directly.
 
 ## Deploy

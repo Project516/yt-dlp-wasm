@@ -25,7 +25,7 @@ Two suites must pass on every PR:
 
 - Upstream's own workflows (`Core Tests`, `Quick Test`, and the rest) on native
   CPython. The fork must not break regular yt-dlp.
-- `Wasm Tests`, the same core suite run inside Pyodide by `wasm/run-tests.mjs`.
+- `Wasm Tests`, the same core suite run inside Pyodide by `packages/yt-dlp-wasm/test-harness/run-tests.mjs`.
 
 A test may change for wasm only when it hits a platform limit, for example a
 test server started on a thread. Adapt it so it still checks the same behavior
@@ -34,7 +34,7 @@ limit. Never skip a test because a feature is unfinished.
 
 Test HTTP servers cannot run in Pyodide, which has no sockets or threads.
 `start_http_server` in `test/helper.py` runs them in the sidecar instead. The
-`wasm/test-host.mjs` module starts it with `python3`, or with the interpreter in
+`test-harness/test-host.mjs` module starts it with `python3`, or with the interpreter in
 `YTDLP_TEST_PYTHON`. That interpreter needs the packages in
 `bundle/requirements/test.txt` and `default.txt`.
 
@@ -68,7 +68,7 @@ run single test files only, wrapped in the memguard script.
   `YTDLP_CORS_PROXY_KEY` sets the access key. The proxy returns the real status,
   headers and cookies in `X-Ytdlp-*` headers, and the handler follows redirects
   itself.
-- **CLI**: `wasm/cli.mjs`, which runs yt-dlp on Pyodide in Node.js with the
+- **CLI**: `packages/yt-dlp-wasm/bin/cli.mjs`, which runs yt-dlp on Pyodide in Node.js with the
   arguments of the real `yt-dlp`.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
 - **Sidecar**: the CPython process that serves the test suite's HTTP servers

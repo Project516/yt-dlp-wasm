@@ -3,10 +3,10 @@
 // The current directory is mounted at its real path, so only paths under it are writable.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHost } from './host-node.mjs';
-import { loadYtdlpPyodide } from './load.mjs';
+import { createHost } from '../src/host-node.mjs';
+import { loadYtdlpPyodide } from '../src/load.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const cwd = process.cwd();
 
 const py = await loadYtdlpPyodide({ env: { ...process.env } });
