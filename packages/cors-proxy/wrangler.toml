@@ -5,6 +5,8 @@ compatibility_date = "2026-09-01"
 # Public demo. Locked to one origin and rate limited per client IP.
 [env.demo]
 name = "yt-dlp-wasm-proxy-demo"
+workers_dev = false
+routes = [{ pattern = "yt-dlp-demo-proxy.project516.dev", custom_domain = true }]
 
 [env.demo.vars]
 ALLOWED_ORIGINS = "https://project516.dev"
