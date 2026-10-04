@@ -164,7 +164,7 @@ test.describe('with a media host behind the proxy', () => {
 test('the proxy URL must be https, or http on localhost', async ({ page }) => {
   await page.goto(PAGE);
   await page.getByText('Proxy settings').click();
-  await page.getByRole('radio', { name: 'My own proxy' }).check();
+  await page.getByRole('radio', { name: 'Custom proxy' }).check();
   const input = page.getByLabel('Proxy URL');
   const error = page.locator('#proxy-url-error');
   for (const url of ['http://proxy.example.com/', 'proxy.example.com']) {
@@ -189,7 +189,7 @@ test('the page links to the repository above the fold', async ({ page }) => {
 test('proxy settings are saved in localStorage and never in the URL', async ({ page }) => {
   await page.goto(PAGE);
   await page.getByText('Proxy settings').click();
-  await page.getByRole('radio', { name: 'My own proxy' }).check();
+  await page.getByRole('radio', { name: 'Custom proxy' }).check();
   await page.getByLabel('Proxy URL').fill('https://proxy.example.com/');
   await page.getByLabel('Access key').fill('secret');
   await page.reload();

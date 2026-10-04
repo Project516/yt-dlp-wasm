@@ -4,11 +4,6 @@ on:
     # 09:17 UTC, which is 03:17 CST and 04:17 CDT
     - cron: '17 9 * * *'
   workflow_dispatch:
-    inputs:
-      check_token:
-        description: Only check what SYNC_TOKEN can do. Does not sync.
-        type: boolean
-        default: false
 
 permissions: {}
 
@@ -22,7 +17,6 @@ env:
 jobs:
   sync:
     name: Sync the latest upstream release
-    if: ${{ !inputs.check_token }}
     permissions:
       contents: read
       issues: write  # Opens the manual merge issue
@@ -162,29 +156,3 @@ jobs:
             done
 
         .github/sync/arm-automerge.sh "${pr}" merge
-
-  check-token:
-    name: Check SYNC_TOKEN
-    if: ${{ inputs.check_token }}
-    permissions:
-      contents: read
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      GH_REPO: ${{ github.repository }}
-    steps:
-    - name: Require SYNC_TOKEN
-      env:
-        SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
-      run: |
-        [ -n "${SYNC_TOKEN}" ] || { echo "::error::The SYNC_TOKEN secret is not set."; exit 1; }
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      with:
-        ref: master
-        persist-credentials: false
-    - name: Check the token
-      env:
-        GH_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
-      run: |
-        gh auth setup-git
-        .github/sync/check-token.sh
