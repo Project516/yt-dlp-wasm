@@ -9,6 +9,7 @@ const [wheelURL] = Object.values(wheels);
 const DEMO_PROXY = import.meta.env.VITE_DEMO_PROXY_URL || 'https://yt-dlp-demo-proxy.project516.dev';
 const STORAGE_KEY = 'yt-dlp-wasm-demo';
 const MAX_LOG_LINES = 2000;
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 const VIDEO_OPTIONS = {
   format: 'bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/bv*[height<=1080]+ba/b[height<=1080]/b',
@@ -68,10 +69,19 @@ function readSettings() {
   settings.key = $('proxy-key').value;
   $('own-fields').hidden = settings.mode !== 'own';
   saveSettings(settings);
+  showProxyUrlProblem();
+}
+
+function showProxyUrlProblem() {
+  const problem = settings.mode === 'own' && settings.url ? proxyUrlProblem(settings.url) : '';
+  $('proxy-url-error').textContent = problem;
+  $('proxy-url-error').hidden = !problem;
+  $('proxy-url').toggleAttribute('aria-invalid', Boolean(problem));
 }
 
 proxyPanel.addEventListener('input', readSettings);
 showSettings();
+showProxyUrlProblem();
 
 const usingDemoProxy = () => settings.mode === 'demo';
 
@@ -108,13 +118,23 @@ $('show-log').addEventListener('click', () => {
 // Runtime instance
 
 let instance;
+const SUPERSEDED = new Error('This runtime was replaced');
+
+function dropInstance() {
+  instance?.ytdlp?.terminate();
+  instance = undefined;
+}
 
 function getYtDlp(proxy) {
   const key = JSON.stringify(proxy);
   if (instance?.key === key) return instance.promise;
-  instance?.ytdlp?.terminate();
+  dropInstance();
   const entry = { key, ytdlp: null };
   entry.promise = createYtDlp({ ...proxy, wheelURL, onLog }).then((ytdlp) => {
+    if (instance !== entry) {
+      ytdlp.terminate();
+      throw SUPERSEDED;
+    }
     entry.ytdlp = ytdlp;
     return ytdlp;
   }, (error) => {
@@ -125,11 +145,27 @@ function getYtDlp(proxy) {
   return entry.promise;
 }
 
+function proxyUrlProblem(url) {
+  try {
+    const { protocol, hostname } = new URL(url);
+    if (protocol === 'https:' || (protocol === 'http:' && LOCAL_HOSTS.has(hostname))) return '';
+  } catch { /* reported below */ }
+  return 'It must start with https://. http:// is allowed only for localhost and 127.0.0.1.';
+}
+
+function proxyProblem() {
+  if (settings.mode === 'demo') return null;
+  if (!settings.url) return { title: 'Enter your proxy URL', detail: 'Add it in the proxy settings, or switch to the demo proxy.' };
+  const detail = proxyUrlProblem(settings.url);
+  return detail ? { title: 'The proxy URL is not valid', detail } : null;
+}
+
 function proxySettings() {
-  const url = settings.mode === 'demo' ? DEMO_PROXY : settings.url;
-  if (!url) throw new UserError('Enter your proxy URL', 'Add it in the proxy settings, or switch to the demo proxy.', $('proxy-url'));
-  if (!/^https?:\/\//.test(url)) throw new UserError('The proxy URL is not valid', 'It must start with https://.', $('proxy-url'));
-  return { corsProxy: url, corsProxyKey: settings.mode === 'own' && settings.key ? settings.key : undefined };
+  const problem = proxyProblem();
+  if (problem) throw new UserError(problem.title, problem.detail, $('proxy-url'));
+  return settings.mode === 'demo'
+    ? { corsProxy: DEMO_PROXY }
+    : { corsProxy: settings.url, corsProxyKey: settings.key || undefined };
 }
 
 class UserError extends Error {
@@ -153,6 +189,7 @@ function setStage(stage) {
     if (index === current) item.setAttribute('aria-current', 'step');
     else item.removeAttribute('aria-current');
   });
+  if (stage === 'process' || stage === 'done') bar.value = 1;
   $('announce').textContent = STAGE_LABELS[stage];
 }
 
@@ -218,7 +255,8 @@ function progressHandler(run) {
     if (event.type === 'download') {
       if (event.status === 'finished') {
         finishedParts++;
-        bar.value = 1;
+        bar.removeAttribute('value');
+        $('download-detail').textContent = '';
         return;
       }
       if (event.status !== 'downloading') return;
@@ -248,7 +286,7 @@ async function start(url, kind, codec) {
     try {
       parsed = new URL(url);
     } catch { /* checked below */ }
-    if (!/^https?:$/.test(parsed?.protocol)) throw new UserError('Enter a link', 'It must start with https://.', urlInput);
+    if (!/^https?:$/.test(parsed?.protocol)) throw new UserError('Enter a link', 'It must start with http:// or https://.', urlInput);
     const proxy = proxySettings();
 
     setStage('runtime');
@@ -298,11 +336,12 @@ function cancel() {
   resetView();
   $('canceled').hidden = false;
   // terminate() is the only way to stop a running download, so start a fresh runtime
-  if (instance?.ytdlp) {
-    instance.ytdlp.terminate();
-    instance = undefined;
-    getYtDlp(proxySettings()).catch(() => {});
-  }
+  if (!instance?.ytdlp) return;
+  dropInstance();
+  if (proxyProblem()) return;
+  getYtDlp(proxySettings()).catch((error) => {
+    if (error !== SUPERSEDED) onLog(`Could not restart the runtime: ${error.message}`);
+  });
 }
 
 form.addEventListener('submit', (event) => {

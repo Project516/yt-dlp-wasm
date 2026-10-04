@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { createProxies } from '../../../packages/yt-dlp-wasm/test-harness/test-host.mjs';
@@ -74,11 +75,107 @@ test.describe('with a media host behind the proxy', () => {
     await page.getByLabel('Link').fill(`${media.url}/missing.mp4`);
     await page.getByRole('button', { name: 'Download' }).click();
     const alert = page.getByRole('alert');
+    await expect(alert).toContainText('That page or file was not found');
     await expect(alert).toContainText('404');
     await alert.getByRole('button', { name: 'Show log' }).click();
     await expect(page.locator('#log-panel')).toHaveJSProperty('open', true);
     await expect(page.locator('#log')).toContainText('404');
   });
+
+  // Opens a fresh page that tracks its live workers
+  async function openDemo(browser, browserSettings = { mode: 'own', url: `http://127.0.0.1:${proxy.port}/`, key: '' }) {
+    const demo = await browser.newPage();
+    const pageErrors = [];
+    demo.on('pageerror', (error) => pageErrors.push(error.message));
+    await demo.addInitScript((value) => {
+      localStorage.setItem('yt-dlp-wasm-demo', value);
+      const NativeWorker = window.Worker;
+      window.liveWorkers = new Set();
+      window.Worker = class extends NativeWorker {
+        constructor(...args) {
+          super(...args);
+          window.liveWorkers.add(this);
+        }
+
+        terminate() {
+          window.liveWorkers.delete(this);
+          super.terminate();
+        }
+      };
+    }, JSON.stringify(browserSettings));
+    await demo.goto(PAGE);
+    return { demo, pageErrors };
+  }
+
+  test('canceling during startup leaves no worker behind when the proxy settings change', async ({ browser }) => {
+    const { demo } = await openDemo(browser);
+    await demo.getByLabel('Link').fill(`${media.url}/tiny.mp4`);
+    await demo.getByRole('button', { name: 'Download' }).click();
+    await expect(demo.locator('#stages li[data-stage="runtime"][data-state="current"]')).toBeVisible();
+    await demo.getByRole('button', { name: 'Cancel' }).click();
+    await expect(demo.locator('#canceled')).toBeVisible();
+
+    await demo.getByText('Proxy settings').click();
+    await demo.getByLabel('Access key').fill('another-key');
+    const [saved] = await Promise.all([
+      demo.waitForEvent('download'),
+      demo.getByRole('button', { name: 'Download' }).click(),
+    ]);
+    expect(saved.suggestedFilename()).toBe('tiny.mp4');
+    await expect.poll(() => demo.evaluate(() => window.liveWorkers.size), { timeout: 120_000 }).toBe(1);
+    await demo.close();
+  });
+
+  test('Cancel works while the proxy settings are invalid', async ({ browser }) => {
+    const hung = http.createServer();
+    await new Promise((resolve) => hung.listen(0, '127.0.0.1', resolve));
+    const { demo, pageErrors } = await openDemo(browser);
+    try {
+      await demo.getByLabel('Link').fill(`http://127.0.0.1:${hung.address().port}/video.mp4`);
+      await demo.getByRole('button', { name: 'Download' }).click();
+      await expect(demo.locator('#stages li[data-stage="info"][data-state="current"]')).toBeVisible({ timeout: 120_000 });
+
+      await demo.getByText('Proxy settings').click();
+      await demo.getByLabel('Proxy URL').fill('ftp://not-a-proxy');
+      await expect(demo.locator('#proxy-url-error')).toContainText('It must start with https://');
+      await demo.getByRole('button', { name: 'Cancel' }).click();
+      await expect(demo.locator('#canceled')).toBeVisible();
+      await expect(demo.getByRole('button', { name: 'Download' })).toBeEnabled();
+      await expect(demo.getByRole('button', { name: 'Cancel' })).toBeHidden();
+      expect(pageErrors).toEqual([]);
+      await expect.poll(() => demo.evaluate(() => window.liveWorkers.size)).toBe(0);
+
+      await demo.getByLabel('Proxy URL').fill(`http://127.0.0.1:${proxy.port}/`);
+      await expect(demo.locator('#proxy-url-error')).toBeHidden();
+      await demo.getByLabel('Link').fill(`${media.url}/tiny.mp4`);
+      const [saved] = await Promise.all([
+        demo.waitForEvent('download'),
+        demo.getByRole('button', { name: 'Download' }).click(),
+      ]);
+      expect(saved.suggestedFilename()).toBe('tiny.mp4');
+    } finally {
+      await demo.close();
+      hung.closeAllConnections();
+      hung.close();
+    }
+  });
+});
+
+test('the proxy URL must be https, or http on localhost', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.getByText('Proxy settings').click();
+  await page.getByRole('radio', { name: 'My own proxy' }).check();
+  const input = page.getByLabel('Proxy URL');
+  const error = page.locator('#proxy-url-error');
+  for (const url of ['http://proxy.example.com/', 'proxy.example.com']) {
+    await input.fill(url);
+    await expect(error).toHaveText('It must start with https://. http:// is allowed only for localhost and 127.0.0.1.');
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+  }
+  for (const url of ['https://proxy.example.com/', 'http://localhost:8787', 'http://127.0.0.1:8787/']) {
+    await input.fill(url);
+    await expect(error).toBeHidden();
+  }
 });
 
 test('the page links to the repository above the fold', async ({ page }) => {

@@ -102,7 +102,8 @@
         <div id="own-fields" hidden>
           <div class="field">
             <label for="proxy-url">Proxy URL</label>
-            <input id="proxy-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://">
+            <input id="proxy-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://" aria-describedby="proxy-url-error">
+            <p id="proxy-url-error" class="field-error" hidden></p>
           </div>
           <div class="field">
             <label for="proxy-key">Access key</label>
