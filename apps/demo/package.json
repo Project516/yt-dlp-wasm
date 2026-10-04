@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:live": "playwright test -c playwright.live.config.mjs"
   },
   "dependencies": {
     "@project516/yt-dlp-wasm": "workspace:*"

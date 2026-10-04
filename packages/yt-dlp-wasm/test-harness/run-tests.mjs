@@ -11,7 +11,7 @@ import { createTestHost } from './test-host.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const env = { HOME: '/home/pyodide' };
-for (const key of ['CI', 'GITHUB_ACTIONS', 'HATCH_TEST_ARGS']) {
+for (const key of ['CI', 'GITHUB_ACTIONS', 'HATCH_TEST_ARGS', 'YTDLP_TEST_TIMEOUT']) {
   if (process.env[key] !== undefined) env[key] = process.env[key];
 }
 
