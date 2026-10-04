@@ -4,11 +4,15 @@ import functools
 import http.client
 import logging
 import re
+import sys
 import warnings
 
 from ..dependencies import brotli, requests, urllib3
 from ..utils import bug_reports_message, int_or_none, variadic
 from ..utils.networking import normalize_url, select_proxy
+
+if sys.platform == 'emscripten':
+    raise ImportError('requests cannot be used without sockets')
 
 if requests is None:
     raise ImportError('requests module is not installed')

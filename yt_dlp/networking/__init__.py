@@ -31,6 +31,13 @@ except Exception as e:
     warnings.warn(f'Failed to import "websockets" request handler: {e}' + bug_reports_message())
 
 try:
+    from . import _fetch
+except ImportError:
+    pass
+except Exception as e:
+    warnings.warn(f'Failed to import "fetch" request handler: {e}' + bug_reports_message())
+
+try:
     from . import _curlcffi
 except ImportError:
     pass
