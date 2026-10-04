@@ -136,10 +136,9 @@ uv = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/yt-dlp/yt-dlp#readme"
-Repository = "https://github.com/yt-dlp/yt-dlp"
-Tracker = "https://github.com/yt-dlp/yt-dlp/issues"
-Funding = "https://github.com/yt-dlp/yt-dlp/blob/master/Maintainers.md#maintainers"
+Documentation = "https://github.com/Project516/yt-dlp-wasm#readme"
+Repository = "https://github.com/Project516/yt-dlp-wasm"
+Tracker = "https://github.com/Project516/yt-dlp-wasm/issues"
 
 [project.scripts]
 yt-dlp = "yt_dlp:main"
