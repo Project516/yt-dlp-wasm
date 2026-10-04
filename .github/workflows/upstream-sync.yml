@@ -1,0 +1,190 @@
+name: Upstream sync
+on:
+  schedule:
+    # 09:17 UTC, which is 03:17 CST and 04:17 CDT
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+    inputs:
+      check_token:
+        description: Only check what SYNC_TOKEN can do. Does not sync.
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/yt-dlp/yt-dlp.git
+
+jobs:
+  sync:
+    name: Sync the latest upstream release
+    if: ${{ !inputs.check_token }}
+    permissions:
+      contents: read
+      issues: write  # Opens the manual merge issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_REPO: ${{ github.repository }}
+    steps:
+    - name: Require SYNC_TOKEN
+      env:
+        SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
+      run: |
+        [ -n "${SYNC_TOKEN}" ] || { echo "::error::The SYNC_TOKEN secret is not set."; exit 1; }
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        ref: master
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Find the latest upstream release
+      id: find
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        tag="$(gh release view --repo yt-dlp/yt-dlp --json tagName --jq .tagName)"
+        git fetch --no-tags "${UPSTREAM_URL}" "refs/tags/${tag}:refs/upstream/${tag}"
+        branch="sync/yt-dlp-${tag}"
+        {
+          echo "tag=${tag}"
+          echo "branch=${branch}"
+          echo "needed=false"
+        } >> "${GITHUB_OUTPUT}"
+
+        if git merge-base --is-ancestor "refs/upstream/${tag}" HEAD; then
+          echo "master already contains yt-dlp ${tag}."
+          title="Upstream yt-dlp ${tag} needs a manual merge"
+          gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg title "${title}" '.[] | select(.title == $title) | .number' \
+            | xargs -r -I{} gh issue close {} --comment "master now contains yt-dlp ${tag}."
+        elif [ "$(gh pr list --head "${branch}" --state open --json number --jq length)" != 0 ]; then
+          echo "A pull request for yt-dlp ${tag} is already open."
+        else
+          echo "needed=true" >> "${GITHUB_OUTPUT}"
+        fi
+    - name: Merge the release
+      id: merge
+      if: ${{ steps.find.outputs.needed == 'true' }}
+      env:
+        TAG: ${{ steps.find.outputs.tag }}
+        BRANCH: ${{ steps.find.outputs.branch }}
+        CONFLICTS_FILE: ${{ runner.temp }}/conflicts.txt
+        NOTES_FILE: ${{ runner.temp }}/notes.txt
+      run: |
+        set -euo pipefail
+        git switch -c "${BRANCH}"
+        status=0
+        .github/sync/merge-upstream.sh "${TAG}" || status=$?
+        if [ "${status}" = 3 ]; then
+          echo "conflicted=true" >> "${GITHUB_OUTPUT}"
+        elif [ "${status}" != 0 ]; then
+          exit "${status}"
+        fi
+    - name: Report the conflicts
+      if: ${{ steps.merge.outputs.conflicted == 'true' }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ steps.find.outputs.tag }}
+        CONFLICTS_FILE: ${{ runner.temp }}/conflicts.txt
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        title="Upstream yt-dlp ${TAG} needs a manual merge"
+        {
+          echo "Merging [yt-dlp ${TAG}](https://github.com/yt-dlp/yt-dlp/releases/tag/${TAG}) into master conflicts in these files, which the sync does not resolve by itself:"
+          echo
+          sed "s/.*/- \`&\`/" "${CONFLICTS_FILE}"
+          echo
+          echo "Merge the tag by hand and open a pull request. Land it with a merge commit, never a squash."
+          echo
+          echo "\`\`\`sh"
+          echo "git switch -c sync/yt-dlp-${TAG} origin/master"
+          echo "git fetch https://github.com/yt-dlp/yt-dlp.git tag ${TAG}"
+          echo "git merge --no-ff ${TAG}"
+          echo "\`\`\`"
+          echo
+          echo "Run: ${RUN_URL}"
+        } > "${RUNNER_TEMP}/issue.md"
+        number="$(gh issue list --state open --limit 200 --json number,title \
+          | jq -r --arg title "${title}" '.[] | select(.title == $title) | .number' | head -n1)"
+        if [ -n "${number}" ]; then
+          gh issue edit "${number}" --body-file "${RUNNER_TEMP}/issue.md"
+        else
+          gh issue create --title "${title}" --body-file "${RUNNER_TEMP}/issue.md"
+        fi
+        echo "::error::yt-dlp ${TAG} does not merge cleanly. See the manual merge issue."
+        exit 1
+    - name: Open the pull request and arm auto-merge
+      if: ${{ steps.find.outputs.needed == 'true' && steps.merge.outputs.conflicted != 'true' }}
+      env:
+        GH_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
+        TAG: ${{ steps.find.outputs.tag }}
+        BRANCH: ${{ steps.find.outputs.branch }}
+        NOTES_FILE: ${{ runner.temp }}/notes.txt
+      run: |
+        set -euo pipefail
+        gh auth setup-git
+        git push --force origin "${BRANCH}"
+
+        {
+          echo "Merges yt-dlp [${TAG}](https://github.com/yt-dlp/yt-dlp/releases/tag/${TAG}) into master."
+          echo
+          echo "Auto-merge is armed with the merge method. GitHub merges this pull request once the required checks pass and project516-review-bot approves the head commit. A library release follows the merge."
+          if [ -s "${NOTES_FILE}" ]; then
+            echo
+            echo "Resolved by the fork's conflict policy:"
+            echo
+            cat "${NOTES_FILE}"
+          fi
+        } > "${RUNNER_TEMP}/pr.md"
+
+        # A new branch can take a moment to show up in the pull request API
+        url=
+        for _ in $(seq 1 10); do
+          url="$(gh pr create --base master --head "${BRANCH}" --title "Sync yt-dlp ${TAG}" \
+            --body-file "${RUNNER_TEMP}/pr.md")" && break
+          sleep 6
+        done
+        [ -n "${url}" ] || { echo "::error::Could not open the pull request."; exit 1; }
+        pr="${url##*/}"
+
+        # Older sync pull requests are contained in this one
+        gh pr list --state open --json number,headRefName \
+          --jq ".[] | select(.headRefName | startswith(\"sync/yt-dlp-\")) | select(.number != ${pr}) | .number" \
+          | while read -r old; do
+              gh pr close "${old}" --delete-branch --comment "Superseded by #${pr}."
+              sleep 20
+            done
+
+        .github/sync/arm-automerge.sh "${pr}" merge
+
+  check-token:
+    name: Check SYNC_TOKEN
+    if: ${{ inputs.check_token }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_REPO: ${{ github.repository }}
+    steps:
+    - name: Require SYNC_TOKEN
+      env:
+        SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
+      run: |
+        [ -n "${SYNC_TOKEN}" ] || { echo "::error::The SYNC_TOKEN secret is not set."; exit 1; }
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        ref: master
+        persist-credentials: false
+    - name: Check the token
+      env:
+        GH_TOKEN: ${{ secrets.SYNC_TOKEN }}  # zizmor: ignore[secrets-outside-env]
+      run: |
+        gh auth setup-git
+        .github/sync/check-token.sh
