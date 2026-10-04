@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Upstream owns the Python dependency files and every sync brings the bumps.
+  # `ignore` also stops security update PRs for these.
+  - package-ecosystem: pip
+    directories: ["/", "/bundle/requirements"]
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+  - package-ecosystem: uv
+    directory: "/"
+    schedule:
+      interval: weekly
+    ignore:
+      - dependency-name: "*"
+
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      npm:
+        patterns: ["*"]
+    ignore:
+      - dependency-name: pyodide
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@project516/ffmpeg-wasm-core"

@@ -32,10 +32,10 @@ from http.cookiejar import CookieJar
 from test.helper import (
     FakeYDL,
     http_server_port,
-    start_http_server,
     validate_and_send,
     verify_address_availability,
 )
+from test.wasm_helper import start_http_server
 from yt_dlp.cookies import YoutubeDLCookieJar
 from yt_dlp.dependencies import brotli, curl_cffi, requests, urllib3
 from yt_dlp.networking import (
@@ -295,7 +295,7 @@ class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
 class TestRequestHandlerBase:
     @classmethod
     def setup_class(cls):
-        # FIXME: we should probably stop the http server after each test
+        # FIXME: we should probably stop the http server thread after each test
         # See: https://github.com/yt-dlp/yt-dlp/pull/7094#discussion_r1199746041
         cls.http_httpd = start_http_server(HTTPTestRequestHandler, http.server.ThreadingHTTPServer)
         cls.http_port = http_server_port(cls.http_httpd)
@@ -307,11 +307,10 @@ class TestRequestHandlerBase:
         cls.https_port = http_server_port(cls.https_httpd)
 
 
-@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'Fetch'], indirect=True)
+@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
 @pytest.mark.handler_flaky('CurlCFFI', reason='segfaults')
 class TestHTTPRequestHandler(TestRequestHandlerBase):
 
-    @pytest.mark.skip_handler('Fetch', 'fetch cannot disable certificate verification')
     def test_verify_cert(self, handler):
         with handler() as rh:
             with pytest.raises(CertificateVerifyError):
@@ -322,7 +321,6 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert r.status == 200
             r.close()
 
-    @pytest.mark.skip_handler('Fetch', 'fetch cannot disable certificate verification')
     def test_ssl_error(self, handler):
         # HTTPS server with too old TLS version
         # XXX: is there a better way to test this than to create a new server?
@@ -341,7 +339,6 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert not issubclass(exc_info.type, CertificateVerifyError)
 
     @pytest.mark.skip_handler('CurlCFFI', 'legacy_ssl ignored by CurlCFFI')
-    @pytest.mark.skip_handler('Fetch', 'fetch does not support legacy SSL')
     def test_legacy_ssl_extension(self, handler):
         # HTTPS server with old ciphers
         # XXX: is there a better way to test this than to create a new server?
@@ -367,7 +364,6 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
                 validate_and_send(rh, Request(f'https://127.0.0.1:{https_port}/headers'))
 
     @pytest.mark.skip_handler('CurlCFFI', 'legacy_ssl ignored by CurlCFFI')
-    @pytest.mark.skip_handler('Fetch', 'fetch does not support legacy SSL')
     def test_legacy_ssl_support(self, handler):
         # HTTPS server with old ciphers
         # XXX: is there a better way to test this than to create a new server?
@@ -614,7 +610,6 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             validate_and_send(rh, request)
         assert time.time() - now < DEFAULT_TIMEOUT
 
-    @pytest.mark.skip_handler('Fetch', 'fetch cannot bind a source address')
     def test_source_address(self, handler):
         source_address = f'127.0.0.{random.randint(5, 255)}'
         # on some systems these loopback addresses we need for testing may not be available
@@ -626,7 +621,6 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             assert source_address == data
 
     @pytest.mark.skip_handler('CurlCFFI', 'not supported by curl-cffi')
-    @pytest.mark.skip_handler('Fetch', 'fetch rejects trailing data after a gzip stream')
     def test_gzip_trailing_garbage(self, handler):
         with handler() as rh:
             res = validate_and_send(rh, Request(f'http://localhost:{self.http_port}/trailing_garbage'))
@@ -780,9 +774,8 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
                 assert res.read() == b''
 
 
-@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI', 'Fetch'], indirect=True)
+@pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
 @pytest.mark.handler_flaky('CurlCFFI', reason='segfaults')
-@pytest.mark.skip_handler('Fetch', 'fetch does not support client certificates')
 class TestClientCertificate:
     @classmethod
     def setup_class(cls):
@@ -897,7 +890,6 @@ class TestRequestHandlerMisc:
 
 @pytest.mark.parametrize('handler', ['Urllib'], indirect=True)
 class TestUrllibRequestHandler(TestRequestHandlerBase):
-    @pytest.mark.no_sockets
     def test_file_urls(self, handler):
         # See https://github.com/ytdl-org/youtube-dl/issues/8227
         tf = tempfile.NamedTemporaryFile(delete=False)
@@ -922,7 +914,6 @@ class TestUrllibRequestHandler(TestRequestHandlerBase):
 
         os.unlink(tf.name)
 
-    @pytest.mark.no_sockets
     def test_data_uri_auto_close(self, handler):
         with handler() as rh:
             res = validate_and_send(rh, Request('data:text/plain,hello%20world'))
@@ -940,7 +931,6 @@ class TestUrllibRequestHandler(TestRequestHandlerBase):
             assert res.fp.fp is None
             assert res.closed
 
-    @pytest.mark.no_sockets
     def test_data_uri_partial_read_then_full_read(self, handler):
         with handler() as rh:
             res = validate_and_send(rh, Request('data:text/plain,hello%20world'))
@@ -951,7 +941,6 @@ class TestUrllibRequestHandler(TestRequestHandlerBase):
             assert res.fp.closed
             assert res.closed
 
-    @pytest.mark.no_sockets
     def test_data_uri_partial_read_greater_than_response_then_full_read(self, handler):
         with handler() as rh:
             res = validate_and_send(rh, Request('data:text/plain,hello%20world'))
@@ -1319,12 +1308,6 @@ class TestRequestHandlerValidation:
             ('http', False, {}),
             ('https', False, {}),
         ]),
-        ('Fetch', [
-            ('http', False, {}),
-            ('https', False, {}),
-            ('data', UnsupportedRequest, {}),
-            ('ws', UnsupportedRequest, {}),
-        ]),
         (NoCheckRH, [('http', False, {})]),
         (ValidationRH, [('http', UnsupportedRequest, {})]),
     ]
@@ -1356,11 +1339,6 @@ class TestRequestHandlerValidation:
             ('socks5', False),
             ('socks5h', False),
         ]),
-        ('Fetch', 'http', [
-            ('http', UnsupportedRequest),
-            ('https', UnsupportedRequest),
-            ('socks5', UnsupportedRequest),
-        ]),
         ('Websockets', 'ws', [
             ('http', UnsupportedRequest),
             ('https', UnsupportedRequest),
@@ -1387,10 +1365,6 @@ class TestRequestHandlerValidation:
         ]),
         ('CurlCFFI', 'http', [
             ('all', 'http', False),
-            ('unrelated', 'http', False),
-        ]),
-        ('Fetch', 'http', [
-            ('all', 'http', UnsupportedRequest),
             ('unrelated', 'http', False),
         ]),
         ('Websockets', 'ws', [
@@ -1444,19 +1418,6 @@ class TestRequestHandlerValidation:
             ({'legacy_ssl': True}, False),
             ({'legacy_ssl': 'notabool'}, AssertionError),
         ]),
-        ('Fetch', 'http', [
-            ({'cookiejar': 'notacookiejar'}, AssertionError),
-            ({'cookiejar': YoutubeDLCookieJar()}, False),
-            ({'timeout': 1}, False),
-            ({'timeout': 'notatimeout'}, AssertionError),
-            ({'unsupported': 'value'}, UnsupportedRequest),
-            ({'legacy_ssl': False}, False),
-            ({'legacy_ssl': True}, UnsupportedRequest),
-            ({'legacy_ssl': 'notabool'}, AssertionError),
-            ({'keep_header_casing': False}, False),
-            ({'keep_header_casing': True}, UnsupportedRequest),
-            ({'keep_header_casing': 'notabool'}, AssertionError),
-        ]),
         (NoCheckRH, 'http', [
             ({'cookiejar': 'notacookiejar'}, False),
             ({'somerandom': 'test'}, False),  # but any extension is allowed through
@@ -1474,7 +1435,6 @@ class TestRequestHandlerValidation:
         ('Urllib', False, 'http'),
         ('Requests', False, 'http'),
         ('CurlCFFI', False, 'http'),
-        ('Fetch', UnsupportedRequest, 'http'),
         ('Websockets', False, 'ws'),
     ], indirect=['handler'])
     def test_no_proxy(self, handler, fail, scheme):
@@ -1486,7 +1446,6 @@ class TestRequestHandlerValidation:
         (HTTPSupportedRH, 'http'),
         ('Requests', 'http'),
         ('CurlCFFI', 'http'),
-        ('Fetch', 'http'),
         ('Websockets', 'ws'),
     ], indirect=['handler'])
     def test_empty_proxy(self, handler, scheme):
@@ -1499,7 +1458,6 @@ class TestRequestHandlerValidation:
         (HTTPSupportedRH, 'http'),
         ('Requests', 'http'),
         ('CurlCFFI', 'http'),
-        ('Fetch', 'http'),
         ('Websockets', 'ws'),
     ], indirect=['handler'])
     def test_invalid_proxy_url(self, handler, scheme, proxy_url):

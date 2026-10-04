@@ -14,7 +14,8 @@ import time
 
 import pytest
 
-from test.helper import http_server_port, start_http_server, validate_and_send
+from test.helper import http_server_port, validate_and_send
+from test.wasm_helper import start_http_server
 from yt_dlp.cookies import YoutubeDLCookieJar
 from yt_dlp.networking import Request
 from yt_dlp.networking.exceptions import (
