@@ -36,6 +36,10 @@ jobs:
     - name: Install Chromium
       working-directory: apps/demo
       run: pnpm exec playwright install --with-deps chromium
+    - name: Probe the proxy
+      run: |
+        curl -sS -m 30 -i -X OPTIONS -H 'Origin: https://yt-dlp-wasm.project516.dev' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: x-ytdlp-headers' 'https://yt-dlp-demo-proxy.project516.dev/?url=https%3A%2F%2Farchive.org%2F' | head -20 || true
+        curl -sS -m 30 -i -H 'Origin: https://yt-dlp-wasm.project516.dev' 'https://yt-dlp-demo-proxy.project516.dev/?url=https%3A%2F%2Farchive.org%2Fmetadata%2Fwonder_bread' | cut -c1-200 | head -12 || true
     - name: Run the live tests
       working-directory: apps/demo
       run: pnpm test:live

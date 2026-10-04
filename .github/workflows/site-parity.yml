@@ -63,7 +63,7 @@ jobs:
         if [ -n "${FILTER}" ]; then args+=(-k "${FILTER}"); fi
         python -m pytest "${args[@]}" > collected.txt || { cat collected.txt; exit 1; }
         # The *_all tests only rerun an extractor's other cases
-        { grep '^test/test_download.py::' collected.txt || true; } \
+        { sed -n 's|^ *<TestCaseFunction \(.*\)>$|test/test_download.py::TestDownload::\1|p' collected.txt || true; } \
           | { grep -v '_all$' || true; } \
           | LC_ALL=C sort > ids.txt
         if [ "${LIMIT}" -gt 0 ]; then
