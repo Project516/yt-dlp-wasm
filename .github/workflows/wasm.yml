@@ -41,3 +41,70 @@ jobs:
       timeout-minutes: 30
       working-directory: packages/yt-dlp-wasm
       run: node test-harness/run-tests.mjs core --pytest-args '--reruns 2 --reruns-delay 3.0'
+
+  library:
+    name: Library tests (Node.js)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+      with:
+        package_json_file: package.json
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: '26'
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install wheel build requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/build.txt
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Build the yt-dlp wheel
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm build
+    - name: Run tests
+      timeout-minutes: 15
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm test
+
+  browser:
+    name: Library tests (Chromium)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+      with:
+        package_json_file: package.json
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: '26'
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install wheel build requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/build.txt
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Build the yt-dlp wheel
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm build
+    - name: Install Chromium
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm exec playwright install --with-deps chromium
+    - name: Run tests
+      timeout-minutes: 20
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm test:browser
