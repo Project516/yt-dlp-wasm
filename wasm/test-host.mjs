@@ -1,0 +1,54 @@
+// The `yt_dlp_test_host` module, registered only by run-tests.mjs. It runs the
+// test suite's HTTP servers in a CPython process because Pyodide has no
+// sockets or threads. Set YTDLP_TEST_PYTHON to use another interpreter.
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import readline from 'node:readline';
+import { fileURLToPath } from 'node:url';
+
+const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-server.py');
+
+export function createTestHost(root) {
+  let child;
+  let nextId = 0;
+  const pending = new Map();
+
+  function sidecar() {
+    if (child) return child;
+    child = spawn(process.env.YTDLP_TEST_PYTHON || 'python3', [script, root], {
+      stdio: ['pipe', 'pipe', 'inherit'],
+    });
+    readline.createInterface({ input: child.stdout }).on('line', (line) => {
+      const reply = JSON.parse(line);
+      const { resolve, reject } = pending.get(reply.id);
+      pending.delete(reply.id);
+      if (reply.error) reject(new Error(reply.error));
+      else resolve(reply);
+    });
+    child.on('exit', (code) => {
+      for (const { reject } of pending.values()) {
+        reject(new Error(`test server process exited with code ${code}`));
+      }
+      pending.clear();
+      child = undefined;
+    });
+    child.on('error', (error) => child.emit('exit', error.message));
+    return child;
+  }
+
+  function send(command) {
+    return new Promise((resolve, reject) => {
+      const id = nextId++;
+      pending.set(id, { resolve, reject });
+      sidecar().stdin.write(`${JSON.stringify({ id, ...command })}\n`);
+    });
+  }
+
+  process.on('exit', () => child?.kill());
+
+  return {
+    start: (module, handler, server, certfile, cafile) =>
+      send({ op: 'start', module, handler, server, certfile, cafile }),
+    stop: (server) => send({ op: 'stop', server }),
+  };
+}

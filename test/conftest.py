@@ -1,10 +1,15 @@
 import inspect
+import sys
 
 import pytest
 
+from test.helper import stop_sidecar_servers
 from yt_dlp.networking import RequestHandler
 from yt_dlp.networking.common import _REQUEST_HANDLERS
 from yt_dlp.utils._utils import _YDLLogger as FakeLogger
+
+NO_SOCKETS_HANDLERS = ('Urllib', 'Requests', 'Websockets', 'CurlCFFI')
+NO_SOCKETS_MODULES = ('test_http_proxy', 'test_socks', 'test_websockets')
 
 
 @pytest.fixture
@@ -19,6 +24,13 @@ def handler(request):
     else:
         pytest.skip(f'{RH_KEY} request handler is not available')
 
+    if (
+        sys.platform == 'emscripten'
+        and handler.RH_KEY in NO_SOCKETS_HANDLERS
+        and not request.node.get_closest_marker('no_sockets')
+    ):
+        pytest.skip(f'{handler.RH_KEY} request handler needs sockets, which are not available in wasm')
+
     class HandlerWrapper(handler):
         RH_KEY = handler.RH_KEY
 
@@ -26,6 +38,12 @@ def handler(request):
             super().__init__(logger=FakeLogger, **kwargs)
 
     return HandlerWrapper
+
+
+@pytest.fixture(autouse=True, scope='class')
+def stop_servers():
+    yield
+    stop_sidecar_servers()
 
 
 @pytest.fixture(autouse=True)
@@ -79,7 +97,19 @@ def pytest_addoption(parser, pluginmanager):
     )
 
 
+def pytest_collection_modifyitems(items):
+    if sys.platform != 'emscripten':
+        return
+    skip = pytest.mark.skip(reason='needs sockets and threads, which are not available in wasm')
+    for item in items:
+        if item.module.__name__.rpartition('.')[2] in NO_SOCKETS_MODULES:
+            item.add_marker(skip)
+
+
 def pytest_configure(config):
+    config.addinivalue_line(
+        'markers', 'no_sockets: run this test for socket-based handlers on emscripten',
+    )
     config.addinivalue_line(
         'markers', 'skip_handler(handler): skip test for the given handler',
     )
