@@ -50,14 +50,14 @@ class HostPopen:
     def __exit__(self, *_):
         self.wait()
 
-    def _run(self, input=None):
+    def _run(self, stdin=None):
         if self._output is None:
-            if isinstance(input, str):
-                input = input.encode(self._encoding, self._errors)
-            out, err, self.returncode = self._program(self.args, input or b'', self._cwd, self._env)
+            if isinstance(stdin, str):
+                stdin = stdin.encode(self._encoding, self._errors)
+            out, err, self.returncode = self._program(self.args, stdin or b'', self._cwd, self._env)
             if self._targets[1] == subprocess.STDOUT:
                 out, err = out + err, b''
-            self._output = tuple(self._deliver(data, target) for data, target in zip((out, err), self._targets))
+            self._output = tuple(self._deliver(data, target) for data, target in zip((out, err), self._targets, strict=True))
         return self._output
 
     def _deliver(self, data, target):
