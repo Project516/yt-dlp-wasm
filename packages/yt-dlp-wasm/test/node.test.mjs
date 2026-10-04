@@ -69,6 +69,22 @@ describe('yt-dlp-wasm in Node.js', () => {
     assert.ok(fs.statSync(files[0].path).size > 0);
   });
 
+  test('a throwing progress handler does not abort the download', async () => {
+    const files = await ytdlp.download(`${media.url}/tiny.mp4`, { outtmpl: 'handler.%(ext)s' }, {
+      outputDir,
+      onProgress: () => { throw new Error('handler bug'); },
+    });
+    assert.deepEqual(files.map(({ name }) => name), ['handler.mp4']);
+  });
+
+  test('download refuses an absolute template outside outputDir', async () => {
+    await assert.rejects(
+      ytdlp.download(`${media.url}/tiny.mp4`, { outtmpl: '/somewhere/else/%(title)s.%(ext)s' }, { outputDir }),
+      /outside outputDir/);
+    const files = await ytdlp.download(`${media.url}/tiny.mp4`, { outtmpl: path.join(outputDir, 'abs.%(ext)s') }, { outputDir });
+    assert.deepEqual(files.map(({ name }) => name), ['abs.mp4']);
+  });
+
   test('a failed download rejects with YtDlpError', async () => {
     await assert.rejects(ytdlp.download(`${media.url}/missing.mp4`, {}, { outputDir }), (error) => {
       assert.ok(error instanceof YtDlpError);

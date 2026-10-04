@@ -23,6 +23,20 @@ async function wheelName() {
 
 const isInside = (dir, parent) => dir === parent || dir.startsWith(parent + path.sep);
 
+// Only outputDir is mounted, so a file yt-dlp writes elsewhere would stay in Pyodide's memory
+function assertInside(home, { outtmpl, paths = {} }) {
+  const templates = typeof outtmpl === 'object' && outtmpl !== null ? Object.values(outtmpl) : [outtmpl];
+  const targets = [...templates, ...Object.entries(paths).filter(([key]) => key !== 'home').map(([, value]) => value)];
+  for (const target of targets) {
+    if (typeof target !== 'string' || !path.isAbsolute(target)) continue;
+    // The fixed part of the template, up to the first field
+    const fixed = path.dirname(target.split('%(')[0] + 'x');
+    if (fixed !== home && !fixed.startsWith(home + path.sep)) {
+      throw new TypeError(`${target} is outside outputDir (${home}); use a relative template or a path inside it`);
+    }
+  }
+}
+
 export async function createYtDlp(options = {}) {
   assertJspi();
   const { corsProxy, corsProxyKey, pyodideIndexURL, onLog, env = {} } = options;
@@ -69,6 +83,7 @@ export async function createYtDlp(options = {}) {
     extractInfo: (url, ytdlOptions = {}) => call({ op: 'extractInfo', url, options: ytdlOptions }),
     async download(url, ytdlOptions = {}, { onProgress, outputDir = process.cwd() } = {}) {
       const home = path.resolve(outputDir);
+      assertInside(home, ytdlOptions);
       await fs.mkdir(home, { recursive: true });
       mount(home);
       const paths = await call({ op: 'download', url, options: ytdlOptions, home }, onProgress);

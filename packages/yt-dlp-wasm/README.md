@@ -13,7 +13,7 @@ import { createYtDlp } from '@project516/yt-dlp-wasm';
 
 const ytdlp = await createYtDlp({ corsProxy: 'https://your-proxy.workers.dev/' });
 const info = await ytdlp.extractInfo('https://example.com/video');
-const [file] = await ytdlp.download(info.webpage_url, { format: 'bestaudio' }, {
+const [file] = await ytdlp.download(info, { format: 'bestaudio' }, {
   onProgress: ({ status, downloadedBytes, totalBytes }) => console.log(status, downloadedBytes, totalBytes),
 });
 const url = URL.createObjectURL(new Blob([file.data], { type: file.mimeType }));

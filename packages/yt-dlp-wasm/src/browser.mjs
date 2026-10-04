@@ -29,7 +29,7 @@ export async function createYtDlp(options = {}) {
     if (data.type === 'error') call.reject(new YtDlpError(data.error.message, data.error));
     else call.resolve(data.result);
   };
-  worker.onerror = (event) => rejectAll(new Error(`The yt-dlp worker failed: ${event.message || 'could not start'}`));
+  worker.onerror = (event) => terminate(new Error(`The yt-dlp worker failed: ${event.message || 'could not start'}`));
 
   function request(method, params = {}, onProgress) {
     if (closed) return Promise.reject(new Error('This yt-dlp instance is closed'));
@@ -42,10 +42,10 @@ export async function createYtDlp(options = {}) {
     return promise;
   }
 
-  function terminate() {
+  function terminate(error = new Error('This yt-dlp instance was terminated')) {
     closed = true;
     worker.terminate();
-    rejectAll(new Error('This yt-dlp instance was terminated'));
+    rejectAll(error);
   }
 
   try {
@@ -67,9 +67,10 @@ export async function createYtDlp(options = {}) {
     extractInfo: (url, ytdlOptions = {}) => request('extractInfo', { url, options: ytdlOptions }),
     download: (url, ytdlOptions = {}, { onProgress } = {}) => request('download', { url, options: ytdlOptions }, onProgress),
     async close() {
+      closed = true;
       await Promise.allSettled([...pending.values()].map(({ promise }) => promise));
       terminate();
     },
-    terminate,
+    terminate: () => terminate(),
   };
 }
