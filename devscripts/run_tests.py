@@ -61,6 +61,9 @@ def run_tests(*tests, pattern=None, ci=False, flaky: bool | None = None):
         arguments.append('--disallow-flaky')
 
     print(f'Running {arguments}', flush=True)
+    if sys.platform == 'emscripten':
+        import pytest
+        return pytest.main(arguments[1:])
     try:
         return subprocess.call(arguments)
     except FileNotFoundError:
