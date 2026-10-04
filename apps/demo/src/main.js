@@ -268,7 +268,7 @@ async function start(url, kind, codec) {
       outtmpl: '%(title).120B.%(ext)s',
       ...(kind === 'audio' ? audioOptions(codec) : VIDEO_OPTIONS),
     };
-    const [file] = await ytdlp.download(info.webpage_url || url, options, { onProgress: progressHandler(run) });
+    const [file] = await ytdlp.download(info, options, { onProgress: progressHandler(run) });
     if (run.canceled) return;
     if (!file) throw new UserError('No file was produced', 'Open the log to see what yt-dlp did.');
 
