@@ -3,7 +3,7 @@ all-extra: lazy-extractors yt-dlp-extra doc pypi-files
 clean: clean-test clean-dist
 clean-all: clean clean-cache
 completions: completion-bash completion-fish completion-zsh
-doc: README.md CONTRIBUTORS issuetemplates supportedsites
+doc: CONTRIBUTORS issuetemplates supportedsites
 ot: offlinetest
 tar: yt-dlp.tar.gz
 
@@ -129,16 +129,10 @@ yt-dlp: yt-dlp.zip
 	chmod a+x yt-dlp
 	rm -rf zip
 
-README.md: $(PY_CODE_FILES) devscripts/make_readme.py
-	COLUMNS=80 $(PYTHON) yt_dlp/__main__.py --ignore-config --help | $(PYTHON) devscripts/make_readme.py
-
-issuetemplates: devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/1_broken_site.yml .github/ISSUE_TEMPLATE_tmpl/2_site_support_request.yml .github/ISSUE_TEMPLATE_tmpl/3_site_feature_request.yml .github/ISSUE_TEMPLATE_tmpl/4_bug_report.yml .github/ISSUE_TEMPLATE_tmpl/5_feature_request.yml yt_dlp/version.py
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/1_broken_site.yml .github/ISSUE_TEMPLATE/1_broken_site.yml
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/2_site_support_request.yml .github/ISSUE_TEMPLATE/2_site_support_request.yml
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/3_site_feature_request.yml .github/ISSUE_TEMPLATE/3_site_feature_request.yml
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/4_bug_report.yml .github/ISSUE_TEMPLATE/4_bug_report.yml
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/5_feature_request.yml .github/ISSUE_TEMPLATE/5_feature_request.yml
-	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/6_question.yml .github/ISSUE_TEMPLATE/6_question.yml
+issuetemplates: devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/1_wasm_bug.yml .github/ISSUE_TEMPLATE_tmpl/2_feature_request.yml .github/ISSUE_TEMPLATE_tmpl/3_question.yml yt_dlp/version.py
+	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/1_wasm_bug.yml .github/ISSUE_TEMPLATE/1_wasm_bug.yml
+	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/2_feature_request.yml .github/ISSUE_TEMPLATE/2_feature_request.yml
+	$(PYTHON) devscripts/make_issue_template.py .github/ISSUE_TEMPLATE_tmpl/3_question.yml .github/ISSUE_TEMPLATE/3_question.yml
 
 supportedsites:
 	$(PYTHON) devscripts/make_supportedsites.py supportedsites.md
