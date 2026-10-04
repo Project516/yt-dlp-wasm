@@ -5,6 +5,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: release-js
+  cancel-in-progress: false
+
 jobs:
   publish:
     name: Publish to npm
