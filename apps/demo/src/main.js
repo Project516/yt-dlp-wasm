@@ -76,7 +76,7 @@ function showProxyUrlProblem() {
   const problem = settings.mode === 'own' && settings.url ? proxyUrlProblem(settings.url) : '';
   $('proxy-url-error').textContent = problem;
   $('proxy-url-error').hidden = !problem;
-  $('proxy-url').toggleAttribute('aria-invalid', Boolean(problem));
+  $('proxy-url').setAttribute('aria-invalid', String(Boolean(problem)));
 }
 
 proxyPanel.addEventListener('input', readSettings);
