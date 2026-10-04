@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Download a video or its audio. yt-dlp runs in your browser, with no server of its own.">
+  <title>yt-dlp-wasm</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232b7a4b'/%3E%3Cpath d='M16 7v12m-6-5 6 6 6-6M9 25h14' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <header class="top">
+    <span class="wordmark">yt-dlp-wasm</span>
+    <a href="https://github.com/Project516/yt-dlp-wasm">GitHub</a>
+  </header>
+
+  <main>
+    <h1>Download a video or its audio</h1>
+    <noscript><p class="notice">This page needs JavaScript.</p></noscript>
+
+    <form id="form" novalidate>
+      <div class="field">
+        <label for="url">Link</label>
+        <input id="url" name="url" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://" required>
+      </div>
+
+      <fieldset class="field">
+        <legend>Get</legend>
+        <div class="segmented">
+          <label><input type="radio" name="kind" value="video" checked><span>Video</span></label>
+          <label><input type="radio" name="kind" value="audio"><span>Audio</span></label>
+        </div>
+      </fieldset>
+
+      <div class="field" id="audio-field" hidden>
+        <label for="codec">Audio format</label>
+        <select id="codec" name="codec">
+          <option value="mp3">mp3 (plays everywhere, slower to make)</option>
+          <option value="m4a">m4a (no re-encoding, faster)</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button type="submit" id="go" class="primary">Download</button>
+        <button type="button" id="cancel" class="secondary" hidden>Cancel</button>
+      </div>
+      <p class="hint">Files are held in memory, so very large videos may fail on low-memory devices.</p>
+    </form>
+
+    <div id="error" class="error" role="alert" hidden>
+      <p class="error-title"></p>
+      <p class="error-detail"></p>
+      <button type="button" id="show-log" class="secondary">Show log</button>
+    </div>
+
+    <section id="media" class="media" aria-label="Video" hidden>
+      <img id="thumb" alt="" width="160" height="90" referrerpolicy="no-referrer" hidden>
+      <div>
+        <p id="media-title" class="media-title"></p>
+        <p id="media-meta" class="media-meta"></p>
+      </div>
+    </section>
+
+    <ol id="stages" class="stages" aria-label="Progress" hidden>
+      <li data-stage="runtime">
+        <span class="stage-name">Load the runtime</span>
+        <span class="stage-detail">About 30 MB the first time. Your browser keeps it after that.</span>
+      </li>
+      <li data-stage="info">
+        <span class="stage-name">Fetch info</span>
+      </li>
+      <li data-stage="download">
+        <span class="stage-name">Download</span>
+        <progress id="bar" max="1" aria-label="Download progress"></progress>
+        <span class="stage-detail" id="download-detail"></span>
+      </li>
+      <li data-stage="process">
+        <span class="stage-name">Process</span>
+        <span class="stage-detail" id="process-detail"></span>
+      </li>
+    </ol>
+    <p id="canceled" class="hint canceled" role="status" hidden>Download canceled.</p>
+    <p id="announce" class="sr-only" role="status"></p>
+
+    <div id="done" class="done" hidden>
+      <p class="done-title">Done</p>
+      <p><span id="done-name"></span> <span id="done-size"></span></p>
+      <p class="hint">The download should have started. If it did not, <a id="done-link" href="#">save the file</a>.</p>
+    </div>
+
+    <details id="proxy-panel" class="panel">
+      <summary>Proxy settings</summary>
+      <div class="panel-body">
+        <p>A browser blocks most sites from talking to this page. A proxy relays the requests. It sees the links you download but not the files you save.</p>
+        <fieldset class="field">
+          <legend>Proxy</legend>
+          <label class="choice"><input type="radio" name="proxy-mode" value="demo"><span>Demo proxy</span></label>
+          <p class="hint choice-hint">Rate limited, and for personal use only.</p>
+          <label class="choice"><input type="radio" name="proxy-mode" value="own"><span>My own proxy</span></label>
+        </fieldset>
+        <div id="own-fields" hidden>
+          <div class="field">
+            <label for="proxy-url">Proxy URL</label>
+            <input id="proxy-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://">
+          </div>
+          <div class="field">
+            <label for="proxy-key">Access key</label>
+            <input id="proxy-key" type="password" autocomplete="off" spellcheck="false">
+            <p class="hint">Saved in this browser only, and sent only to your proxy.</p>
+          </div>
+        </div>
+        <p><a href="https://github.com/Project516/yt-dlp-wasm/blob/master/packages/cors-proxy/README.md#run-your-own-proxy-for-free">Run your own proxy for free</a></p>
+      </div>
+    </details>
+
+    <details id="log-panel" class="panel">
+      <summary>Log</summary>
+      <div class="panel-body">
+        <pre id="log" tabindex="0" aria-label="yt-dlp log"></pre>
+        <button type="button" id="copy-log" class="secondary small">Copy log</button>
+      </div>
+    </details>
+  </main>
+
+  <footer>
+    <p>Downloads run in your browser. The proxy only relays requests.</p>
+    <p><a href="https://github.com/Project516/yt-dlp-wasm">yt-dlp-wasm on GitHub</a> <span aria-hidden="true">/</span> <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a></p>
+  </footer>
+</body>
+</html>
