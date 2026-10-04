@@ -1,13 +1,16 @@
 // Builds yt-dlp's pure-Python wheel from the repository root into dist/ and
-// records its file name in dist/wheel.json for the loaders.
+// records its file name in dist/wheel.json for the loaders. Also refreshes src/pins.json.
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PINS, REQUIREMENTS, generatePins } from './update-pins.mjs';
 
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(packageDir, '../..');
 const dist = path.join(packageDir, 'dist');
+
+fs.writeFileSync(PINS, generatePins(fs.readFileSync(REQUIREMENTS, 'utf8')));
 
 fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist);

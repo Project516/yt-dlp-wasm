@@ -119,7 +119,7 @@ The same suite also runs on native CPython with `python -m devscripts.run_tests 
 
 ## Relationship to upstream
 
-This fork tracks `yt-dlp/yt-dlp` and merges its releases. Bugs that also happen with regular yt-dlp, such as a broken site or a missing extractor, belong in the [upstream issue tracker](https://github.com/yt-dlp/yt-dlp/issues/new/choose). Bugs that only happen under WebAssembly belong in the [issues of this repository](https://github.com/Project516/yt-dlp-wasm/issues).
+This fork tracks the stable releases of `yt-dlp/yt-dlp`. A daily workflow merges each new release tag and publishes a new minor version of the npm package, and the release notes name the yt-dlp version it is based on. Bugs that also happen with regular yt-dlp, such as a broken site or a missing extractor, belong in the [upstream issue tracker](https://github.com/yt-dlp/yt-dlp/issues/new/choose). Bugs that only happen under WebAssembly belong in the [issues of this repository](https://github.com/Project516/yt-dlp-wasm/issues).
 
 Upstream's release builds, installation methods, and update channels do not apply to this fork. Upstream's [Changelog](Changelog.md) is kept as history.
 

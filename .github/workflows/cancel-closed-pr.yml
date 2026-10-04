@@ -1,0 +1,32 @@
+name: Cancel closed PR runs
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+concurrency:
+  group: cancel-closed-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  cancel:
+    name: Cancel runs
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    permissions:
+      actions: write  # Cancels the runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+    - name: Cancel the pull request's queued and running runs
+      run: |
+        for status in queued in_progress; do
+          gh api "repos/${GH_REPO}/actions/runs" -X GET \
+            -f event=pull_request -f branch="${BRANCH}" -f status="${status}" --paginate \
+            --jq ".workflow_runs[] | select(any(.pull_requests[]; .number == ${PR_NUMBER})) | .id"
+        done | { grep -vx "${GITHUB_RUN_ID}" || true; } | xargs -r -n1 gh run cancel
