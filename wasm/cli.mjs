@@ -16,7 +16,7 @@ for (const dir of mounts) {
   py.FS.mkdirTree(dir);
   py.mountNodeFS(dir, dir);
 }
-py.registerJsModule('yt_dlp_host', createHost());
+py.registerJsModule('yt_dlp_host', createHost({ FS: py.FS }));
 
 py.globals.set('ROOT', root);
 py.globals.set('CWD', cwd);
