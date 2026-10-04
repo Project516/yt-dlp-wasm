@@ -18,6 +18,10 @@ yt-dlp is a feature-rich command-line audio/video downloader with support for [t
 <!-- MANPAGE: MOVE "USAGE AND OPTIONS" SECTION HERE -->
 
 <!-- MANPAGE: BEGIN EXCLUDED SECTION -->
+## Try it in your browser
+
+The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. Its source is in [`apps/demo`](apps/demo).
+
 ## Use it as a library
 
 `@project516/yt-dlp-wasm` runs yt-dlp unmodified on [Pyodide](https://pyodide.org), in browsers and Node.js, behind a small JavaScript API.
