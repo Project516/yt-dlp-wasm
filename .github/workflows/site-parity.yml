@@ -1,5 +1,7 @@
 name: Site parity
 on:
+  pull_request:
+    paths: ['.github/workflows/site-parity.yml']
   workflow_dispatch:
     inputs:
       shards:
@@ -49,9 +51,9 @@ jobs:
     - name: List and shard the cases
       id: plan
       env:
-        SHARDS: ${{ inputs.shards }}
-        FILTER: ${{ inputs.filter }}
-        LIMIT: ${{ inputs.limit }}
+        SHARDS: 2
+        FILTER: 
+        LIMIT: 10
       run: |
         set -euo pipefail
         for value in "${SHARDS}" "${LIMIT}"; do
@@ -120,7 +122,7 @@ jobs:
       env:
         SHARD: ${{ matrix.shard }}
         SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
-        TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+        TIMEOUT_SECONDS: 120
       run: |
         set -uo pipefail
         junit="${GITHUB_WORKSPACE}/junit/native-${SHARD}.xml"
@@ -179,7 +181,7 @@ jobs:
       env:
         SHARD: ${{ matrix.shard }}
         SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
-        YTDLP_TEST_TIMEOUT: ${{ inputs.timeout_seconds }}
+        YTDLP_TEST_TIMEOUT: 120
       run: |
         set -uo pipefail
         junit="${GITHUB_WORKSPACE}/junit/wasm-${SHARD}.xml"
