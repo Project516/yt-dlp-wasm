@@ -98,19 +98,21 @@ class TimeoutExceeded(BaseException):
     """BaseException, so the `except Exception` clauses in yt-dlp do not swallow it."""
 
 
-# Pyodide has no signals or threads. Python calls are the only places a timeout can fire
+# Pyodide has no signals or threads, so the timeout fires at the next call into yt-dlp.
+# Raising in the event loop or the ffi would leave the test run waiting forever
 @pytest.hookimpl(wrapper=True)
 def pytest_runtest_call(item):
     seconds = float(os.environ.get('YTDLP_TEST_TIMEOUT') or 0)
     if not seconds:
         return (yield)
     monitoring, tool = sys.monitoring, sys.monitoring.PROFILER_ID
+    source_dir = os.path.join(str(item.config.rootpath), 'yt_dlp') + os.sep
     deadline = time.monotonic() + seconds
     fired = False
 
     def check(code, offset):
         nonlocal fired
-        if not fired and time.monotonic() > deadline:
+        if not fired and time.monotonic() > deadline and code.co_filename.startswith(source_dir):
             fired = True
             raise TimeoutExceeded(f'Timeout of {seconds:g}s exceeded')
 
