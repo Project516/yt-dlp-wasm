@@ -6,12 +6,16 @@ updates:
     directories: ["/", "/bundle/requirements"]
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
   - package-ecosystem: uv
     directory: "/"
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: "*"
 
