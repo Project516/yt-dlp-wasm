@@ -1,0 +1,41 @@
+name: Wasm bug
+description: Something fails under Pyodide that works with regular yt-dlp
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > Not providing the required (*) information or removing the template will result in your issue being closed and ignored.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: The same URL and options work with regular yt-dlp on a desktop. If they fail there too, I'll report it to [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp/issues/new/choose) instead
+          required: true
+        - label: I've searched [the issues](https://github.com/Project516/yt-dlp-wasm/issues?q=is%3Aissue) in this repository, including closed ones
+          required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: Where yt-dlp-wasm runs
+      placeholder: Firefox 150 on Linux, Node.js 25.2
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: Include the URL and options, what you expected, and what you got
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Verbose output
+      description: Run with `-v` and paste the whole output
+      render: shell
+    validations:
+      required: true

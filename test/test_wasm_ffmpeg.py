@@ -136,3 +136,32 @@ def test_failure_reports_stderr(ydl, tmp_path):
 
 def test_ffmpegfd_unavailable():
     assert not FFmpegFD.available()
+
+
+def test_two_concat_lists(ydl, clips, tmp_path):
+    parts = tmp_path / 'parts'
+    parts.mkdir()
+    lists = []
+    for name, clip in (('v', clips[0]), ('a', clips[1])):
+        shutil.copy(clip, parts / f'{name}.{clip.rpartition(".")[2]}')
+        listing = tmp_path / f'{name}.txt'
+        part = f'parts/{name}.{clip.rpartition(".")[2]}'
+        listing.write_text(f"file '{part}'\nfile '{part}'\n")
+        lists.append(str(listing))
+    out = str(tmp_path / 'joined.mp4')
+    _ffmpeg('-f', 'concat', '-safe', '0', '-i', lists[0], '-f', 'concat', '-safe', '0', '-i', lists[1],
+            '-map', '0:v', '-map', '1:a', '-c', 'copy', out, cwd=str(tmp_path))
+    pp = FFmpegPostProcessor(ydl)
+    assert sorted(_streams(pp, out)) == ['audio', 'video']
+    assert 1.8 < float(pp.get_metadata_object(out)['format']['duration']) < 2.2
+
+
+def test_host_failure_is_oserror(monkeypatch):
+    import types
+
+    from pyodide.code import run_js
+
+    failing = run_js("() => Promise.reject(new Error('core failed to load'))")
+    monkeypatch.setitem(sys.modules, 'yt_dlp_host', types.SimpleNamespace(run_ffmpeg=lambda *args: failing()))
+    with pytest.raises(OSError, match='core failed to load'):
+        Popen.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
