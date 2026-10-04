@@ -15,6 +15,10 @@ It is a fork of yt-dlp. The extractors, format selection, output templates, and 
 
 The wasm code lives in new files and in small changes to upstream files that apply only when `sys.platform == 'emscripten'`. That keeps merges from upstream cheap.
 
+## Try it in your browser
+
+The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. Its source is in [`apps/demo`](apps/demo).
+
 ## Use it as a library
 
 `@project516/yt-dlp-wasm` wraps yt-dlp on Pyodide in a small JavaScript API for browsers and Node.js.
@@ -95,7 +99,7 @@ The options are the same as yt-dlp's. For the full reference see the [upstream R
 
 ## Development
 
-This is a pnpm monorepo. The Python package stays at the root as in upstream. The JavaScript lives in `packages/yt-dlp-wasm` (the library, CLI and Pyodide test harness) and `packages/cors-proxy`.
+This is a pnpm monorepo. The Python package stays at the root as in upstream. The JavaScript lives in `packages/yt-dlp-wasm` (the library, CLI and Pyodide test harness), `packages/cors-proxy`, and the demo site in `apps/demo`.
 
 ```shell
 pnpm install

@@ -17,7 +17,9 @@ A pnpm monorepo. The Python stays at the root so upstream syncs stay cheap.
   `dist/`, `test/` has the Node.js tests, `test-browser/` the Playwright tests
   and `test-harness/` runs the Python suite in Pyodide.
 - `packages/cors-proxy`: the CORS proxy Worker.
-- `apps/`: sites built on the library, such as the demo.
+- `apps/demo`: the demo site `@project516/yt-dlp-wasm-demo`, plain HTML, CSS and
+  JS built with Vite. `test-browser/` has its Playwright smoke test. Live at
+  https://yt-dlp-wasm.project516.dev.
 
 Install once at the root with `pnpm install`. One lockfile covers every package.
 
@@ -35,7 +37,7 @@ Install once at the root with `pnpm install`. One lockfile covers every package.
 
 ## Tests
 
-Three suites must pass on every PR:
+Four suites must pass on every PR:
 
 - Upstream's own workflows (`Core Tests`, `Quick Test`, and the rest) on native
   CPython. The fork must not break regular yt-dlp.
@@ -43,6 +45,8 @@ Three suites must pass on every PR:
 - The library tests in `packages/yt-dlp-wasm`. `pnpm test` runs the Node.js ones
   with `node:test`. `pnpm test:browser` runs Playwright on headless Chromium,
   and only CI runs it.
+- The demo's smoke test in `apps/demo`. Build the wheel and the demo, then
+  `pnpm test:browser` there. Only CI runs it.
 
 A test may change for wasm only when it hits a platform limit, for example a
 test server started on a thread. Adapt it so it still checks the same behavior
@@ -102,3 +106,9 @@ run single test files only, wrapped in the memguard script.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
 - **Sidecar**: the CPython process that serves the test suite's HTTP servers
   while the tests run in Pyodide.
+- **Demo**: `apps/demo`. The Pages workflow `pages.yml` builds the wheel and the
+  site and deploys it on pushes to master. Vite serves the library's worker and
+  the wheel from the build, and the proxy settings live in localStorage.
+- **Demo proxy**: the public CORS proxy at https://yt-dlp-demo-proxy.project516.dev
+  that the demo uses by default. It is rate limited and allows only the demo's
+  origin. `VITE_DEMO_PROXY_URL` overrides it at build time.
