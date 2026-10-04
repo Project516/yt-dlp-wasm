@@ -17,7 +17,7 @@ The wasm code lives in new files and in small changes to upstream files that app
 
 ## Try it in your browser
 
-The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. Its source is in [`apps/demo`](apps/demo).
+The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. The demo may not work from cloud servers, some VPNs, or automated browsers, because the proxy's domain challenges that traffic. Its source is in [`apps/demo`](apps/demo).
 
 ## Use it as a library
 
