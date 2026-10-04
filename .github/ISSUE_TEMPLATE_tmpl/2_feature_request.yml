@@ -1,0 +1,21 @@
+name: Feature request
+description: Ask for something yt-dlp-wasm does not do yet
+labels: [enhancement]
+body:
+  %(no_skip)s
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: This is about running yt-dlp in WebAssembly. Requests for new yt-dlp options or sites belong in [yt-dlp/yt-dlp](https://github.com/yt-dlp/yt-dlp/issues/new/choose)
+          required: true
+        - label: I've searched [the issues](https://github.com/Project516/yt-dlp-wasm/issues?q=is%%3Aissue) in this repository, including closed ones
+          required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What do you want, and why
+      description: Describe the problem you are trying to solve before the solution you have in mind
+    validations:
+      required: true
