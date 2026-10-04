@@ -62,6 +62,14 @@ run single test files only, wrapped in the memguard script.
   with the host's `fetch`.
 - **ffmpeg bridge**: the code that runs `ffmpeg` and `ffprobe` commands on
   ffmpeg.wasm instead of a subprocess.
+- **CORS proxy**: a Cloudflare Worker in `packages/cors-proxy` that fetches
+  URLs for browsers. When the `YTDLP_CORS_PROXY` environment variable is set to
+  its URL, the fetch handler sends every request through it, and
+  `YTDLP_CORS_PROXY_KEY` sets the access key. The proxy returns the real status,
+  headers and cookies in `X-Ytdlp-*` headers, and the handler follows redirects
+  itself.
+- **CLI**: `wasm/cli.mjs`, which runs yt-dlp on Pyodide in Node.js with the
+  arguments of the real `yt-dlp`.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
 - **Sidecar**: the CPython process that serves the test suite's HTTP servers
   while the tests run in Pyodide.

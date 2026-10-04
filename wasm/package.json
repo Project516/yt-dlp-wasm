@@ -2,6 +2,9 @@
   "name": "yt-dlp-wasm",
   "private": true,
   "type": "module",
+  "bin": {
+    "yt-dlp-wasm": "./cli.mjs"
+  },
   "engines": {
     "node": ">=25"
   },
