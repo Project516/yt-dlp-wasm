@@ -17,7 +17,7 @@ const rows = CASES.map((entry) => {
   return { ...entry, ...result };
 });
 
-const cell = (text) => String(text).replace(/\|/g, '\\|').replace(/\s+/g, ' ');
+const cell = (text) => String(text).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s+/g, ' ');
 const summary = [
   '## Live demo smoke test',
   '',

@@ -149,7 +149,7 @@ export function buildReport(ids, results) {
   return { cases, totals, extractors, extractorTotals, wasmOnlyReasons, missing };
 }
 
-const cell = (text) => String(text ?? '').replace(/\|/g, '\\|').replace(/\s+/g, ' ');
+const cell = (text) => String(text ?? '').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\s+/g, ' ');
 
 export function summaryMarkdown(report, { full = false } = {}) {
   const { cases, totals, extractors, extractorTotals, wasmOnlyReasons, missing } = report;
