@@ -4,3 +4,5 @@ packages:
 allowBuilds:
   esbuild: true
   workerd: true
+minimumReleaseAgeExclude:
+  - '@project516/ffmpeg-wasm-core'

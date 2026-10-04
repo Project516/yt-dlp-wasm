@@ -13,12 +13,16 @@ import pytest
 
 from test.helper import FakeYDL
 from yt_dlp.downloader.external import FFmpegFD
+from yt_dlp.postprocessor.embedthumbnail import EmbedThumbnailPP
 from yt_dlp.postprocessor.ffmpeg import (
     FFmpegConcatPP,
+    FFmpegEmbedSubtitlePP,
     FFmpegExtractAudioPP,
     FFmpegMergerPP,
+    FFmpegMetadataPP,
     FFmpegPostProcessor,
     FFmpegPostProcessorError,
+    FFmpegThumbnailsConvertorPP,
     FFmpegVideoRemuxerPP,
 )
 from yt_dlp.utils import Popen
@@ -165,3 +169,73 @@ def test_host_failure_is_oserror(monkeypatch):
     monkeypatch.setitem(sys.modules, 'yt_dlp_host', types.SimpleNamespace(run_ffmpeg=lambda *args: failing()))
     with pytest.raises(OSError, match='core failed to load'):
         Popen.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+@pytest.mark.parametrize(('codec', 'ext', 'codec_name'), [
+    ('opus', 'opus', 'opus'),
+    ('vorbis', 'ogg', 'vorbis'),
+    ('flac', 'flac', 'flac'),
+    ('wav', 'wav', 'pcm_s16le'),
+])
+def test_extract_audio_codecs(ydl, clips, tmp_path, codec, ext, codec_name):
+    path = str(tmp_path / 'source.mp4')
+    shutil.copy(_merged(ydl, clips, tmp_path), path)
+    info = {'filepath': path, 'ext': 'mp4'}
+    FFmpegExtractAudioPP(ydl, preferredcodec=codec).run(info)
+    assert info['ext'] == ext
+    assert FFmpegPostProcessor(ydl).get_audio_codec(info['filepath']) == codec_name
+
+
+def test_merge_webm(ydl, tmp_path):
+    video, audio, out = (str(tmp_path / name) for name in ('video.webm', 'audio.webm', 'merged.webm'))
+    _ffmpeg('-f', 'lavfi', '-i', 'testsrc=duration=1:size=64x48:rate=10',
+            '-c:v', 'libvpx-vp9', '-deadline', 'realtime', '-cpu-used', '8', '-b:v', '100k', video)
+    _ffmpeg('-f', 'lavfi', '-i', 'sine=duration=1', '-c:a', 'libopus', audio)
+    FFmpegMergerPP(ydl).run({
+        'filepath': out,
+        'ext': 'webm',
+        'requested_formats': [
+            {'vcodec': 'vp9', 'acodec': 'none', 'protocol': 'https'},
+            {'vcodec': 'none', 'acodec': 'opus', 'protocol': 'https'},
+        ],
+        '__files_to_merge': [video, audio],
+    })
+    metadata = FFmpegPostProcessor(ydl).get_metadata_object(out)
+    assert 'webm' in metadata['format']['format_name']
+    assert sorted(stream['codec_name'] for stream in metadata['streams']) == ['opus', 'vp9']
+
+
+def test_metadata(ydl, clips, tmp_path):
+    out = _merged(ydl, clips, tmp_path)
+    info = {'filepath': out, 'ext': 'mp4', 'title': 'A wasm title', 'uploader': 'Someone'}
+    FFmpegMetadataPP(ydl, add_chapters=False, add_infojson=False).run(info)
+    tags = FFmpegPostProcessor(ydl).get_metadata_object(out)['format']['tags']
+    assert tags['title'] == 'A wasm title'
+    assert tags['artist'] == 'Someone'
+
+
+def test_thumbnail_convert_and_embed(ydl, clips, tmp_path):
+    pp = FFmpegPostProcessor(ydl)
+    song, thumbnail = str(tmp_path / 'song.mp3'), str(tmp_path / 'song.png')
+    _ffmpeg('-i', clips[1], song)
+    _ffmpeg('-f', 'lavfi', '-i', 'color=c=red:s=32x32', '-frames:v', '1', thumbnail)
+    converted = FFmpegThumbnailsConvertorPP(ydl).convert_thumbnail(thumbnail, 'jpg')
+    assert pp.get_metadata_object(converted)['streams'][0]['codec_name'] == 'mjpeg'
+    info = {'filepath': song, 'ext': 'mp3', 'thumbnails': [{'id': '0', 'filepath': converted}]}
+    EmbedThumbnailPP(ydl).run(info)
+    streams = pp.get_metadata_object(song)['streams']
+    assert any(stream.get('disposition', {}).get('attached_pic') for stream in streams)
+
+
+def test_embed_subtitles(ydl, clips, tmp_path):
+    out = _merged(ydl, clips, tmp_path)
+    subtitle = tmp_path / 'merged.en.vtt'
+    subtitle.write_text('WEBVTT\n\n00:00:00.000 --> 00:00:00.900\nHello from wasm\n')
+    info = {
+        'filepath': out,
+        'ext': 'mp4',
+        'requested_subtitles': {'en': {'ext': 'vtt', 'filepath': str(subtitle)}},
+    }
+    FFmpegEmbedSubtitlePP(ydl).run(info)
+    streams = FFmpegPostProcessor(ydl).get_metadata_object(out)['streams']
+    assert [stream['codec_name'] for stream in streams if stream['codec_type'] == 'subtitle'] == ['mov_text']
