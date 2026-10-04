@@ -66,10 +66,74 @@ run single test files only, wrapped in the memguard script.
 - `origin` is Project516/yt-dlp-wasm. `upstream` is yt-dlp/yt-dlp, fetch only.
   Never open a PR or push against upstream.
 - Feature PRs target `master` and squash merge.
-- Upstream syncs merge `upstream/master` into a branch, and that PR lands with a
-  merge commit, not a squash. A squash would make every later sync conflict.
-- project516-review-bot reviews every push. Its CHANGES_REQUESTED blocks
-  merging. If it fails to review a head, a Sonnet subagent reviews instead.
+- Upstream syncs land with a merge commit, not a squash. A squash would make
+  every later sync conflict. See Sync and release.
+- master has the ruleset `master-merge-gate`. A PR needs one approval, and a
+  push dismisses approvals. These checks must pass: Check workflows, Run
+  zizmor, Core test, Code check, Core tests (Pyodide), Library tests (Node.js)
+  and Library tests (Chromium). Admins can bypass it for PRs only, so nothing
+  can be pushed to master directly. When a required check is renamed, update
+  the ruleset.
+
+## Sync and release
+
+The fork tracks yt-dlp stable releases, not upstream master. Nobody has to act
+for a normal release.
+
+1. `upstream-sync.yml` runs daily at 09:17 UTC (03:17 CST, 04:17 CDT) and on
+   demand. It reads the latest release tag of yt-dlp/yt-dlp. If master has it,
+   the run ends.
+2. Otherwise it merges the tag with `git merge --no-ff` on the branch
+   `sync/yt-dlp-<tag>` and opens a PR. If a PR for that tag is open already, it
+   does nothing. A new sync PR closes older open sync PRs.
+3. On a conflict, fork-owned files keep ours: README.md, CONTRIBUTING.md,
+   Maintainers.md, LICENSE, LICENSE.upstream, CONTRIBUTORS, the issue
+   templates and the PR template. pyproject.toml takes upstream's side of the
+   conflict, and `.github/sync/fork-pyproject.py` applies the fork's license,
+   sdist and `[project.urls]` edits again. Any other conflict pushes nothing.
+   The run opens or updates the issue "Upstream yt-dlp <tag> needs a manual
+   merge", lists the files, and fails.
+4. `.github/sync/arm-automerge.sh` arms auto-merge with the merge method, but
+   only when the master ruleset requires an approving review and status checks.
+   GitHub merges the PR when the checks pass and project516-review-bot approves
+   the head commit. No person is involved.
+5. `sync-release.yml` runs when a `sync/yt-dlp-*` PR merges. It tags the merge
+   commit `js-vX.Y.Z`, the next minor version after the highest `js-v*` tag. If
+   there is none yet, it starts from the version in `package.json`. The tag
+   starts `release-js.yml`, which sets the package version from the tag, runs
+   the tests, publishes to npm, and creates a GitHub release that says "Based on
+   yt-dlp <version>". The version in `packages/yt-dlp-wasm/package.json` is not
+   bumped in the repo. The tag is the version.
+6. The merge also pushes to master, so `pages.yml` deploys the demo.
+
+For a wasm-only change, release by hand from master with a tag push. Use the
+next patch version:
+
+```sh
+git fetch origin && git push origin origin/master:refs/tags/js-vX.Y.Z
+```
+
+`SYNC_TOKEN` is a fine-grained PAT with Contents, Pull requests and Workflows
+write on this repo. The built-in token cannot push workflow file changes, and
+pushes, PRs and tags it creates start no workflows. Check the token with
+`gh workflow run upstream-sync.yml -f check_token=true`. The run pushes a
+temporary branch, opens and closes a draft PR, deletes the branch, and
+reports each permission in the job summary.
+
+The library installs the Python dependencies in `src/pins.json`.
+`scripts/update-pins.mjs` writes it from `bundle/requirements/default.txt`, and
+both `pnpm build` and the sync run it. A dependency that upstream adds fails
+`test/pins.test.mjs` until it is classified in that script.
+
+## Review
+
+project516-review-bot is the review gate. A green CI run is not enough, because
+the bot must approve the head commit before it can merge. It runs free models
+and can be wrong. When a finding is wrong, answer the thread with evidence, such
+as a command output or a link to the code, and push back. When the bot only
+comments and does not approve, and you have shown every finding false, an admin
+can merge with `gh pr merge <n> --admin`. If the bot fails to review a head, a
+Sonnet subagent reviews instead.
 
 ## Glossary
 
@@ -102,3 +166,5 @@ run single test files only, wrapped in the memguard script.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
 - **Sidecar**: the CPython process that serves the test suite's HTTP servers
   while the tests run in Pyodide.
+- **Sync PR**: the PR from `sync/yt-dlp-<tag>` that merges an upstream release.
+  It merges by itself and starts a release.
