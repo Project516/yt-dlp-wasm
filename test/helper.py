@@ -380,6 +380,7 @@ def start_http_server(handler_class, server_class=http.server.HTTPServer, *, cer
     httpd = server_class(('127.0.0.1', 0), handler_class)
     if certfile:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         if cafile:
             context.verify_mode = ssl.CERT_REQUIRED
             context.load_verify_locations(cafile=cafile)
