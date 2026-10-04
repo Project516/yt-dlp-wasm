@@ -84,7 +84,10 @@ def move_sections(readme):
 
 
 def filter_options(readme):
-    section = re.search(r'(?sm)^# USAGE AND OPTIONS\n.+?(?=^# )', readme).group(0)
+    mobj = re.search(r'(?sm)^# USAGE AND OPTIONS\n.+?(?=^# )', readme)
+    if not mobj:
+        return readme
+    section = mobj.group(0)
     section_new = section.replace('*', R'\*')
 
     options = '# OPTIONS\n'

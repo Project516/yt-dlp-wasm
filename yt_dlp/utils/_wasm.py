@@ -19,14 +19,18 @@ def _host_ffmpeg(name):
     """Returns a program that runs ffmpeg or ffprobe on the host, or None if it can't"""
     try:
         import yt_dlp_host
-        from pyodide.ffi import can_run_sync, run_sync, to_js
+        from pyodide.ffi import JsException, can_run_sync, run_sync, to_js
     except ImportError:
         return None
     if not hasattr(yt_dlp_host, 'run_ffmpeg') or not can_run_sync():
         return None
 
     def program(args, stdin, cwd, env):
-        result = run_sync(yt_dlp_host.run_ffmpeg(name, to_js(args[1:]), cwd or os.getcwd(), to_js(stdin)))
+        try:
+            result = run_sync(yt_dlp_host.run_ffmpeg(name, to_js(args[1:]), cwd or os.getcwd(), to_js(stdin)))
+        except JsException as e:
+            # Like a binary that fails to start
+            raise OSError(f'{name} could not be started on ffmpeg.wasm: {e.message}') from e
         return result.stdout.to_bytes(), result.stderr.to_bytes(), result.code
     return program
 
