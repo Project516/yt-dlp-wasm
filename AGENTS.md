@@ -119,10 +119,7 @@ git fetch origin && git push origin origin/master:refs/tags/js-vX.Y.Z
 
 `SYNC_TOKEN` is a fine-grained PAT with Contents, Pull requests and Workflows
 write on this repo. The built-in token cannot push workflow file changes, and
-pushes, PRs and tags it creates start no workflows. Check the token with
-`gh workflow run upstream-sync.yml -f check_token=true`. The run pushes a
-temporary branch, opens and closes a draft PR, deletes the branch, and
-reports each permission in the job summary.
+pushes, PRs and tags it creates start no workflows.
 
 The library installs the Python dependencies in `src/pins.json`.
 `scripts/update-pins.mjs` writes it from `bundle/requirements/default.txt`, and
