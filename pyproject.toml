@@ -24,8 +24,8 @@ keywords = [
     "sponsorblock",
     "yt-dlp",
 ]
-license = "Unlicense"
-license-files = ["LICENSE"]
+license = "AGPL-3.0-or-later AND Unlicense"
+license-files = ["LICENSE", "LICENSE.upstream"]
 classifiers = [
     "Topic :: Multimedia :: Video",
     "Development Status :: 5 - Production/Stable",
@@ -136,10 +136,9 @@ uv = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/yt-dlp/yt-dlp#readme"
-Repository = "https://github.com/yt-dlp/yt-dlp"
-Tracker = "https://github.com/yt-dlp/yt-dlp/issues"
-Funding = "https://github.com/yt-dlp/yt-dlp/blob/master/Maintainers.md#maintainers"
+Documentation = "https://github.com/Project516/yt-dlp-wasm#readme"
+Repository = "https://github.com/Project516/yt-dlp-wasm"
+Tracker = "https://github.com/Project516/yt-dlp-wasm/issues"
 
 [project.scripts]
 yt-dlp = "yt_dlp:main"
@@ -155,6 +154,7 @@ include = [
     "/.gitignore",  # included by default, needed for auto-excludes
     "/Changelog.md",
     "/LICENSE",  # included as license
+    "/LICENSE.upstream",  # included as license
     "/pyproject.toml",  # included by default
     "/README.md",  # included as readme
     "/supportedsites.md",
