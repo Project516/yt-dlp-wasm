@@ -8,11 +8,6 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const RUNTIMES = ['native', 'wasm'];
-const [idsFile, junitDir, outDir] = process.argv.slice(2);
-if (!outDir) {
-  console.error('usage: report.mjs <ids-file> <junit-dir> <out-dir>');
-  process.exit(2);
-}
 
 const unescapeXml = (text) => text
   .replace(/&lt;/g, '<')
@@ -211,6 +206,11 @@ export function casesCsv(cases) {
 }
 
 function main() {
+  const [idsFile, junitDir, outDir] = process.argv.slice(2);
+  if (!outDir) {
+    console.error('usage: report.mjs <ids-file> <junit-dir> <out-dir>');
+    process.exit(2);
+  }
   const ids = fs.readFileSync(idsFile, 'utf8').split('\n').filter(Boolean);
   const results = Object.fromEntries(RUNTIMES.map((runtime) => {
     const merged = new Map();
