@@ -7,6 +7,20 @@ fetch-based request handler, an ffmpeg bridge to
 [ffmpeg.wasm](https://github.com/Project516/ffmpeg.wasm), and a JS challenge
 provider that uses the host JS engine.
 
+## Layout
+
+A pnpm monorepo. The Python stays at the root so upstream syncs stay cheap.
+
+- `yt_dlp/`, `test/`, `devscripts/`, `pyproject.toml`: upstream's Python.
+- `packages/yt-dlp-wasm`: the library `@project516/yt-dlp-wasm`. `src/` is the
+  library, `bin/` the CLI, `scripts/build-wheel.mjs` builds the wheel into
+  `dist/`, `test/` has the Node.js tests, `test-browser/` the Playwright tests
+  and `test-harness/` runs the Python suite in Pyodide.
+- `packages/cors-proxy`: the CORS proxy Worker.
+- `apps/`: sites built on the library, such as the demo.
+
+Install once at the root with `pnpm install`. One lockfile covers every package.
+
 ## Direction
 
 - Behave like upstream yt-dlp. Extraction, format selection, output templates,
@@ -21,11 +35,14 @@ provider that uses the host JS engine.
 
 ## Tests
 
-Two suites must pass on every PR:
+Three suites must pass on every PR:
 
 - Upstream's own workflows (`Core Tests`, `Quick Test`, and the rest) on native
   CPython. The fork must not break regular yt-dlp.
-- `Wasm Tests`, the same core suite run inside Pyodide by `wasm/run-tests.mjs`.
+- `Wasm Tests`, the same core suite run inside Pyodide by `packages/yt-dlp-wasm/test-harness/run-tests.mjs`.
+- The library tests in `packages/yt-dlp-wasm`. `pnpm test` runs the Node.js ones
+  with `node:test`. `pnpm test:browser` runs Playwright on headless Chromium,
+  and only CI runs it.
 
 A test may change for wasm only when it hits a platform limit, for example a
 test server started on a thread. Adapt it so it still checks the same behavior
@@ -34,9 +51,12 @@ limit. Never skip a test because a feature is unfinished.
 
 Test HTTP servers cannot run in Pyodide, which has no sockets or threads.
 `start_http_server` in `test/helper.py` runs them in the sidecar instead. The
-`wasm/test-host.mjs` module starts it with `python3`, or with the interpreter in
+`test-harness/test-host.mjs` module starts it with `python3`, or with the interpreter in
 `YTDLP_TEST_PYTHON`. That interpreter needs the packages in
 `bundle/requirements/test.txt` and `default.txt`.
+
+Build the wheel with `pnpm build` in `packages/yt-dlp-wasm` before running the
+library tests or the CLI.
 
 Heavy builds and full test runs go to GitHub Actions. On the Raspberry Pi,
 run single test files only, wrapped in the memguard script.
@@ -68,8 +88,17 @@ run single test files only, wrapped in the memguard script.
   `YTDLP_CORS_PROXY_KEY` sets the access key. The proxy returns the real status,
   headers and cookies in `X-Ytdlp-*` headers, and the handler follows redirects
   itself.
-- **CLI**: `wasm/cli.mjs`, which runs yt-dlp on Pyodide in Node.js with the
-  arguments of the real `yt-dlp`.
+- **Library**: `@project516/yt-dlp-wasm`. Its `createYtDlp(options)` returns an
+  object with `run`, `extractInfo`, `download`, `close` and `terminate`. It
+  uses `src/node.mjs` in Node.js and `src/browser.mjs` in browsers.
+- **Wheel**: the pure-Python wheel of `yt_dlp/` that `scripts/build-wheel.mjs`
+  builds into `dist/`. The library installs it into Pyodide with micropip.
+- **Engine**: `src/engine.mjs`, which installs the wheel and runs the Python
+  half of the API (`src/python-api.mjs`) for both entries.
+- **Worker**: the module Web Worker (`src/worker.mjs`) that holds Pyodide in
+  browsers. `src/browser.mjs` proxies calls to it with postMessage.
+- **CLI**: `packages/yt-dlp-wasm/bin/cli.mjs`, which runs yt-dlp through the
+  library in Node.js with the arguments of the real `yt-dlp`.
 - **Host**: the JS environment Pyodide runs in, a browser worker or Node.js.
 - **Sidecar**: the CPython process that serves the test suite's HTTP servers
   while the tests run in Pyodide.

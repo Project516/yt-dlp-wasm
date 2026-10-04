@@ -39,7 +39,7 @@ Two suites must pass:
 python -m devscripts.run_tests core
 
 # The same core tests inside Pyodide, with Node.js 25 or later
-cd wasm && pnpm install && node run-tests.mjs core
+pnpm install && node packages/yt-dlp-wasm/test-harness/run-tests.mjs core
 ```
 
 Change a test for wasm only when it hits a platform limit, for example a test server that starts a thread. Adapt it to check the same behavior where possible. Otherwise skip it on emscripten with a reason that names the limit. Do not skip a test because a feature is unfinished.

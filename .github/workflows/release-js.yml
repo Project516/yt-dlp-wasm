@@ -1,0 +1,72 @@
+name: Release library
+on:
+  push:
+    tags: ['js-v*']
+
+permissions: {}
+
+concurrency:
+  group: release-js
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    permissions:
+      contents: write  # Needed to create the GitHub release
+      id-token: write  # Needed for trusted publishing
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+      with:
+        package_json_file: package.json
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: '26'
+        registry-url: https://registry.npmjs.org
+        package-manager-cache: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install wheel build requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/build.txt
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Check the version matches the tag
+      env:
+        TAG: ${{ github.ref_name }}
+      working-directory: packages/yt-dlp-wasm
+      run: |
+        version="$(node -p "require('./package.json').version")"
+        if [ "${TAG}" != "js-v${version}" ]; then
+          echo "::error::Tag ${TAG} does not match package version ${version}"
+          exit 1
+        fi
+    - name: Build the yt-dlp wheel
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm build
+    - name: Run tests
+      timeout-minutes: 15
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm test
+    - name: Install Chromium
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm exec playwright install --with-deps chromium
+    - name: Run browser tests
+      timeout-minutes: 20
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm test:browser
+    # npm trusts this workflow file, and the job's id-token proves the run to npm
+    - name: Publish to npm
+      working-directory: packages/yt-dlp-wasm
+      run: pnpm publish --access public --provenance --no-git-checks
+    - name: Create GitHub release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ github.ref_name }}
+      run: gh release create "${TAG}" --verify-tag --generate-notes --latest=false

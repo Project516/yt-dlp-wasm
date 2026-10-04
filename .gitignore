@@ -132,3 +132,9 @@ yt-dlp-plugins
 
 # Packages
 yt_dlp_ejs/
+
+# wasm monorepo
+node_modules/
+
+# Tiny media files for the library and demo tests
+!packages/yt-dlp-wasm/test/fixtures/*
