@@ -19,6 +19,7 @@ from yt_dlp.extractor.youtube.jsc.provider import (
 )
 from yt_dlp.extractor.youtube.jsc._builtin.bun import BunJCP
 from yt_dlp.extractor.youtube.jsc._builtin.deno import DenoJCP
+from yt_dlp.extractor.youtube.jsc._builtin.host import HostJCP
 from yt_dlp.extractor.youtube.jsc._builtin.node import NodeJCP
 from yt_dlp.extractor.youtube.jsc._builtin.quickjs import QuickJSJCP
 
@@ -128,7 +129,7 @@ for test in CHALLENGES:
     responses.append(JsChallengeProviderResponse(request, JsChallengeResponse(test.type, output_type(test.values))))
 
 
-@pytest.fixture(params=[BunJCP, DenoJCP, NodeJCP, QuickJSJCP])
+@pytest.fixture(params=[BunJCP, DenoJCP, HostJCP, NodeJCP, QuickJSJCP])
 def jcp(request, ie, logger):
     obj = request.param(ie, logger, None)
     if not obj.is_available():
