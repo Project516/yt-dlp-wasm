@@ -5,6 +5,7 @@ import datetime as dt
 import functools
 import glob
 import hashlib
+import hmac
 import http.cookiejar
 import http.cookies
 import io
@@ -1038,7 +1039,18 @@ def _get_windows_v10_key(browser_root, logger):
 
 
 def pbkdf2_sha1(password, salt, iterations, key_length):
-    return hashlib.pbkdf2_hmac('sha1', password, salt, iterations, key_length)
+    if hasattr(hashlib, 'pbkdf2_hmac'):
+        return hashlib.pbkdf2_hmac('sha1', password, salt, iterations, key_length)
+    # Pyodide's hashlib is built without OpenSSL
+    key = b''
+    for block in range(1, -(-key_length // 20) + 1):
+        u = hmac.digest(password, salt + struct.pack('>I', block), 'sha1')
+        t = int.from_bytes(u, 'big')
+        for _ in range(iterations - 1):
+            u = hmac.digest(password, u, 'sha1')
+            t ^= int.from_bytes(u, 'big')
+        key += t.to_bytes(20, 'big')
+    return key[:key_length]
 
 
 def _decrypt_aes_cbc_multi(ciphertext, keys, logger, initialization_vector=b' ' * 16, hash_prefix=False):
