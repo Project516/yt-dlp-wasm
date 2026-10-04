@@ -14,7 +14,7 @@ import warnings
 
 from yt_dlp.utils._wasm import HostPopen, register_program
 
-_FRESH_MODULES = ('yt_dlp', 'devscripts')
+_FRESH_MODULES = ('yt_dlp', 'yt_dlp_plugins', 'ytdlp_plugins', 'devscripts')
 
 
 def _is_fresh(name):
@@ -24,6 +24,7 @@ def _is_fresh(name):
 @contextlib.contextmanager
 def _fresh_modules():
     saved = {name: mod for name, mod in sys.modules.items() if _is_fresh(name)}
+    meta_path = sys.meta_path[:]
     for name in saved:
         del sys.modules[name]
     try:
@@ -32,6 +33,7 @@ def _fresh_modules():
         for name in [name for name in sys.modules if _is_fresh(name)]:
             del sys.modules[name]
         sys.modules.update(saved)
+        sys.meta_path[:] = meta_path
 
 
 def _run_python(args, stdin, cwd, env):
@@ -40,9 +42,13 @@ def _run_python(args, stdin, cwd, env):
     stdout = io.TextIOWrapper(out, encoding='utf-8', write_through=True)
     stderr = io.TextIOWrapper(err, encoding='utf-8', write_through=True)
     old_cwd, old_argv, old_path, old_stdin = os.getcwd(), sys.argv, sys.path[:], sys.stdin
+    old_environ = dict(os.environ)
     returncode = 0
     try:
         os.chdir(cwd or old_cwd)
+        if env is not None:
+            os.environ.clear()
+            os.environ.update(env)
         with (
             _fresh_modules(),
             contextlib.redirect_stdout(stdout),
@@ -75,6 +81,8 @@ def _run_python(args, stdin, cwd, env):
     finally:
         sys.stdin = old_stdin
         sys.argv, sys.path[:] = old_argv, old_path
+        os.environ.clear()
+        os.environ.update(old_environ)
         os.chdir(old_cwd)
     return out.getvalue(), err.getvalue(), returncode
 

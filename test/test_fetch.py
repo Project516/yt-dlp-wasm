@@ -57,6 +57,10 @@ class FetchTestRequestHandler(http.server.BaseHTTPRequestHandler):
             self._send(b'x' * (4 << 20))
         elif self.path == '/set-cookie-redirect':
             self._send(b'', 302, {'Set-Cookie': 'hop=1; path=/', 'Location': '/headers'})
+        elif self.path == '/redirect-other-host':
+            self._send(b'', 302, {'Location': f'http://localhost:{self.server.server_address[1]}/headers'})
+        elif self.path == '/redirect-bad-location':
+            self._send(b'', 302, {'Location': 'http://[invalid/'})
         elif self.path == '/headers':
             self._send(str(self.headers).encode())
         else:
@@ -164,3 +168,21 @@ class TestFetchRequestHandler:
         with handler(cookiejar=cookiejar) as rh:
             data = validate_and_send(rh, Request(f'{self.url}/headers')).read()
         assert b'cookie: jar=1' in data.lower()
+
+    def test_authorization_kept_on_same_origin_redirect(self, handler):
+        with handler() as rh:
+            res = validate_and_send(rh, Request(
+                f'{self.url}/set-cookie-redirect', headers={'Authorization': 'Bearer secret'}))
+            assert b'Bearer secret' in res.read()
+
+    def test_authorization_stripped_on_cross_origin_redirect(self, handler):
+        with handler() as rh:
+            res = validate_and_send(rh, Request(
+                f'{self.url}/redirect-other-host', headers={'Authorization': 'Bearer secret'}))
+            assert res.url.startswith('http://localhost:')
+            assert b'secret' not in res.read()
+
+    def test_bad_redirect_location(self, handler):
+        with handler() as rh, pytest.raises(HTTPError) as exc_info:
+            validate_and_send(rh, Request(f'{self.url}/redirect-bad-location'))
+        assert exc_info.value.status == 302
