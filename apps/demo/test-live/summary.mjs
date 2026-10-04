@@ -1,4 +1,4 @@
-// Turns live-results/*.json into summary.md for the job summary and failures.md for the issue
+// Turns live-results/*.json into summary.md for the job summary
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -23,16 +23,10 @@ const summary = [
   '',
   '| Case | Kind | Result | Time | Detail |',
   '| --- | --- | --- | ---: | --- |',
-  ...rows.map((row) => `| ${row.label} | ${row.blocking ? 'blocking' : 'informational'} | ${row.status === 'pass' ? 'pass' : row.blocking ? 'FAIL' : 'fail, not blocking'} | ${row.seconds}s | ${cell(row.detail)} |`),
+  ...rows.map((row) => `| ${row.label} | ${row.blocking ? 'blocking' : 'informational'} | ${{ pass: 'pass', blocked: 'blocked' }[row.status] ?? (row.blocking ? 'FAIL' : 'fail, not blocking')} | ${row.seconds}s | ${cell(row.detail)} |`),
   '',
 ].join('\n');
 
-const failures = rows
-  .filter((row) => row.blocking && row.status !== 'pass')
-  .map((row) => `- ${row.label}: ${cell(row.detail)}`)
-  .join('\n');
-
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'summary.md'), summary);
-fs.writeFileSync(path.join(dir, 'failures.md'), failures);
 process.stdout.write(summary);
