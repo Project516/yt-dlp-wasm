@@ -2,7 +2,7 @@
   "name": "@project516/yt-dlp-wasm",
   "version": "0.1.0",
   "description": "yt-dlp running unmodified on Pyodide, in browsers and Node.js",
-  "license": "Unlicense",
+  "license": "AGPL-3.0-or-later AND Unlicense",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Project516/yt-dlp-wasm.git",
@@ -26,7 +26,8 @@
   "files": [
     "bin",
     "src",
-    "dist"
+    "dist",
+    "LICENSE.upstream"
   ],
   "engines": {
     "node": ">=25"
