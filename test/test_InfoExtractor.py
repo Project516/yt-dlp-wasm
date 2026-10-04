@@ -70,6 +70,7 @@ class TestInfoExtractor(unittest.TestCase):
     def test_ie_key(self):
         self.assertEqual(get_info_extractor(YoutubeIE.ie_key()), YoutubeIE)
 
+    @unittest.skipIf(sys.platform == 'emscripten', '--netrc-cmd needs a shell, which wasm does not have')
     def test_get_netrc_login_info(self):
         for params in [
             {'usenetrc': True, 'netrc_location': './test/testdata/netrc/netrc'},
