@@ -180,7 +180,7 @@ yt-dlp.tar.gz: all
 		--exclude '.*_cache' \
 		--exclude '.git' \
 		-- \
-		README.md supportedsites.md Changelog.md LICENSE \
+		README.md supportedsites.md Changelog.md LICENSE LICENSE.upstream \
 		CONTRIBUTING.md Maintainers.md CONTRIBUTORS AUTHORS \
 		Makefile yt-dlp.1 README.txt completions .gitignore \
 		yt-dlp yt_dlp pyproject.toml devscripts test
