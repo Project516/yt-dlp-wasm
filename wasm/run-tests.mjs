@@ -26,7 +26,7 @@ for (const key of ['CI', 'GITHUB_ACTIONS', 'HATCH_TEST_ARGS']) {
 const py = await loadPyodide({ env });
 py.FS.mkdirTree(root);
 py.mountNodeFS(root, root);
-py.registerJsModule('yt_dlp_host', createHost());
+py.registerJsModule('yt_dlp_host', createHost({ FS: py.FS }));
 py.registerJsModule('yt_dlp_test_host', createTestHost(root));
 await py.loadPackage(LOCKED, { messageCallback: () => {} });
 await py.pyimport('micropip').install(PYPI);
