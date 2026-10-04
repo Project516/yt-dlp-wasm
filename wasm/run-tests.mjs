@@ -4,6 +4,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadPyodide } from 'pyodide';
+import { createHost } from './host-node.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -24,6 +25,7 @@ for (const key of ['CI', 'GITHUB_ACTIONS', 'HATCH_TEST_ARGS']) {
 const py = await loadPyodide({ env });
 py.FS.mkdirTree(root);
 py.mountNodeFS(root, root);
+py.registerJsModule('yt_dlp_host', createHost());
 await py.loadPackage(LOCKED, { messageCallback: () => {} });
 await py.pyimport('micropip').install(PYPI);
 
