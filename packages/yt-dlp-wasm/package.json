@@ -34,11 +34,16 @@
   "scripts": {
     "build": "node scripts/build-wheel.mjs",
     "prepack": "pnpm build",
+    "test": "node --test test/node.test.mjs test/versions.test.mjs",
+    "test:browser": "playwright test",
     "test:pyodide": "node test-harness/run-tests.mjs core"
   },
   "dependencies": {
     "@project516/ffmpeg-wasm-core": "0.13.1",
     "pyodide": "314.0.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
   },
   "publishConfig": {
     "access": "public"
