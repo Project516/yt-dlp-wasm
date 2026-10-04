@@ -120,6 +120,11 @@ class TestFetchProxy:
     def echo(self, rh, path='/echo', **kwargs):
         return json.loads(validate_and_send(rh, Request(f'{self.url}{path}', **kwargs)).read())
 
+    def test_proxy_url_needs_http_scheme(self, handler, monkeypatch):
+        monkeypatch.setenv('YTDLP_CORS_PROXY', 'proxy.example')
+        with handler() as rh, pytest.raises(RequestError, match='http or https URL'):
+            validate_and_send(rh, Request(f'{self.url}/payload'))
+
     def test_response_url_is_target(self, handler, start_proxy):
         start_proxy()
         with handler() as rh:
