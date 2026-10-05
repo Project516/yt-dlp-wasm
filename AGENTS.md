@@ -84,9 +84,10 @@ run single test files only, wrapped in the memguard script.
 - master has the ruleset `master-merge-gate`. A PR needs one approval, and a
   push dismisses approvals. These checks must pass: Check workflows, Run
   zizmor, Core test, Code check, Core tests (Pyodide), Library tests (Node.js),
-  Library tests (Chromium) and Demo tests (Chromium). Admins can bypass it for PRs only, so nothing
-  can be pushed to master directly. When a required check is renamed, update
-  the ruleset.
+  Library tests (Chromium), Demo tests (Chromium), Proxy tests (Node.js) (18),
+  Proxy tests (Node.js) (26) and Proxy setup (Linux arm64). Admins can bypass
+  it for PRs only, so nothing can be pushed to master directly. When a required
+  check is renamed, update the ruleset.
 
 ## Sync and release
 
@@ -109,7 +110,10 @@ for a normal release.
 4. `.github/sync/arm-automerge.sh` arms auto-merge with the merge method, but
    only when the master ruleset requires an approving review and status checks.
    GitHub merges the PR when the checks pass and project516-review-bot approves
-   the head commit. No person is involved.
+   the head commit. No person is involved. The bot reviews a sync PR in sync
+   mode: only the fork's own changes in the files the release touched, from a
+   compare of the upstream parent with the head. That works only while the head
+   is the merge commit, so the sync makes exactly one commit, pins included.
 5. `sync-release.yml` runs when a `sync/yt-dlp-*` PR merges. It tags the merge
    commit `js-vX.Y.Z`, the next minor version after the highest `js-v*` tag. If
    there is none yet, it starts from the version in `package.json`. The tag
