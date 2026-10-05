@@ -17,7 +17,7 @@ The wasm code lives in new files and in small changes to upstream files that app
 
 ## Try it in your browser
 
-The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. The demo may not work from cloud servers, some VPNs, or automated browsers, because the proxy's domain challenges that traffic. Its source is in [`apps/demo`](apps/demo).
+The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and saves a video or its audio as a file. It needs a browser with JSPI (see below) and sends its requests through a rate limited proxy meant for personal use. The demo may not work from cloud servers, some VPNs, or automated browsers, because the proxy's domain challenges that traffic. If a site asks you to sign in, you can load a cookies.txt file in the demo's Cookies settings. The file stays in memory until you close the page, and it passes through the proxy. Its source is in [`apps/demo`](apps/demo).
 
 ## Use it as a library
 
@@ -59,6 +59,7 @@ The package also installs a `yt-dlp-wasm` command that takes the arguments of `y
 `createYtDlp(options)` takes these, all optional:
 
 - `corsProxy`, `corsProxyKey`: URL and access key of a CORS proxy.
+- `cookies`: the text of a Netscape `cookies.txt` file. `extractInfo` and `download` use it as `cookiefile` unless their options set one. `run` adds `--cookies` unless the arguments have `--cookies` or `--no-cookies`. The file stays in Pyodide's memory and is never written to disk. In a browser the cookies go through your CORS proxy, so use a proxy you trust.
 - `pyodideIndexURL`: where Pyodide loads from. The default is jsDelivr in browsers and the installed `pyodide` package in Node.js.
 - `ffmpegCoreURL`: where the ffmpeg.wasm core loads from in browsers. The default is jsDelivr.
 - `wheelURL`: the yt-dlp wheel in browsers. The default is the package's `dist/` folder next to the module, so a bundler has to serve that folder or you pass this.

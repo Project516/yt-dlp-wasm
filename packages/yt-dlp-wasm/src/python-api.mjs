@@ -55,17 +55,24 @@ def postprocessor_hook():
     return hook
 
 
+def cookie_options(request):
+    return {'cookiefile': request['cookies']} if request.get('cookies') else {}
+
+
 def run(request):
     os.chdir(request['cwd'])
+    argv = request['argv']
+    if request.get('cookies') and not any(a in ('--cookies', '--no-cookies') or a.startswith('--cookies=') for a in argv):
+        argv = ['--cookies', request['cookies'], *argv]
     try:
-        yt_dlp.main(request['argv'])
+        yt_dlp.main(argv)
     except SystemExit as e:
         return e.code if isinstance(e.code, int) else int(e.code is not None)
     return 0
 
 
 def extract_info(request):
-    with yt_dlp.YoutubeDL({'noprogress': True, **request['options']}) as ydl:
+    with yt_dlp.YoutubeDL({'noprogress': True, **cookie_options(request), **request['options']}) as ydl:
         return ydl.sanitize_info(ydl.extract_info(request['url'], download=False))
 
 
@@ -73,6 +80,7 @@ def download(request):
     files = []
     options = {
         'noprogress': True,
+        **cookie_options(request),
         **request['options'],
         'progress_hooks': [progress_hook()],
         'postprocessor_hooks': [postprocessor_hook()],

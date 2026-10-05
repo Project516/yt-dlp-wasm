@@ -1,4 +1,5 @@
 // The browser entry. Pyodide runs in a module worker, and this side proxies to it.
+import { assertCookies } from './cookies.mjs';
 import { YtDlpError } from './errors.mjs';
 import { assertJspi } from './jspi.mjs';
 
@@ -10,6 +11,7 @@ const absolute = (url) => (url === undefined ? undefined : new URL(url, globalTh
 export async function createYtDlp(options = {}) {
   assertJspi();
   const { onLog, pyodideIndexURL, ffmpegCoreURL, wheelURL, ...rest } = options;
+  assertCookies(rest.cookies);
   const worker = new Worker(new URL('./worker.mjs', import.meta.url), { type: 'module' });
   const pending = new Map();
   let nextId = 0;

@@ -35,7 +35,7 @@
   "scripts": {
     "build": "node scripts/build-wheel.mjs",
     "prepack": "pnpm build",
-    "test": "node --test test/node.test.mjs test/versions.test.mjs test/pins.test.mjs",
+    "test": "node --test test/node.test.mjs test/cookies.test.mjs test/versions.test.mjs test/pins.test.mjs",
     "test:browser": "playwright test",
     "test:pyodide": "node test-harness/run-tests.mjs core"
   },

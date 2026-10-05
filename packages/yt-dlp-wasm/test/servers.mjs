@@ -44,8 +44,11 @@ function sendFile(req, res, file, headers = {}) {
 }
 
 // Serves fixtures/. With `cors`, any origin may read it, as a media host that allows browsers would.
-export function startMediaServer({ cors = false } = {}) {
-  return listen((req, res) => {
+// `cookies` collects the Cookie header of each request.
+export async function startMediaServer({ cors = false } = {}) {
+  const cookies = [];
+  const server = await listen((req, res) => {
+    cookies.push(req.headers.cookie ?? '');
     const headers = cors ? {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': '*',
@@ -54,7 +57,11 @@ export function startMediaServer({ cors = false } = {}) {
     if (req.method === 'OPTIONS') return res.writeHead(204, headers).end();
     sendFile(req, res, path.join(FIXTURES, path.basename(new URL(req.url, 'http://x').pathname)), headers);
   });
+  return { ...server, cookies };
 }
+
+// A cookies.txt with one cookie for the local media host
+export const cookiesFor = (host, name, value) => `# Netscape HTTP Cookie File\n${host}\tFALSE\t/\tFALSE\t4102444800\t${name}\t${value}\n`;
 
 // Serves the package directory, so a page can import src/ and fetch dist/
 export function startSiteServer() {

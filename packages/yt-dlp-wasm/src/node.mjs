@@ -2,6 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertCookies } from './cookies.mjs';
 import { createEngine } from './engine.mjs';
 import { createHost } from './host-node.mjs';
 import { assertJspi } from './jspi.mjs';
@@ -39,7 +40,8 @@ function assertInside(home, { outtmpl, paths = {} }) {
 
 export async function createYtDlp(options = {}) {
   assertJspi();
-  const { corsProxy, corsProxyKey, pyodideIndexURL, onLog, env = {} } = options;
+  const { corsProxy, corsProxyKey, cookies, pyodideIndexURL, onLog, env = {} } = options;
+  assertCookies(cookies);
   const { loadPyodide } = await import('pyodide');
   const py = await loadPyodide({
     ...(pyodideIndexURL && { indexURL: pyodideIndexURL }),
@@ -57,7 +59,7 @@ export async function createYtDlp(options = {}) {
   const wheel = await wheelName();
   py.FS.mkdirTree(WHEEL_MOUNT);
   py.mountNodeFS(WHEEL_MOUNT, fileURLToPath(DIST));
-  const engine = await createEngine({ py, wheel: `emfs:${WHEEL_MOUNT}/${wheel}`, createHost });
+  const engine = await createEngine({ py, wheel: `emfs:${WHEEL_MOUNT}/${wheel}`, createHost, cookies });
 
   // Files written by Python land on the real filesystem through a mount at the same path
   const mounted = [];

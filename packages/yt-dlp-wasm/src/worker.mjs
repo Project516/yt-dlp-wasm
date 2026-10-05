@@ -11,7 +11,7 @@ const DEFAULT_CWD = '/home/pyodide';
 let engine;
 let nextDir = 0;
 
-async function init({ corsProxy, corsProxyKey, pyodideIndexURL = PYODIDE_INDEX_URL, ffmpegCoreURL, wheelURL, env = {} }) {
+async function init({ corsProxy, corsProxyKey, cookies, pyodideIndexURL = PYODIDE_INDEX_URL, ffmpegCoreURL, wheelURL, env = {} }) {
   const indexURL = pyodideIndexURL.endsWith('/') ? pyodideIndexURL : `${pyodideIndexURL}/`;
   const { loadPyodide } = await import(`${indexURL}pyodide.mjs`);
   const py = await loadPyodide({
@@ -29,6 +29,7 @@ async function init({ corsProxy, corsProxyKey, pyodideIndexURL = PYODIDE_INDEX_U
     py,
     wheel,
     createHost: ({ FS }) => createHost({ FS, coreUrl: ffmpegCoreURL }),
+    cookies,
   });
 }
 

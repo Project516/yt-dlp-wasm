@@ -10,6 +10,7 @@ const [wheelURL] = Object.values(wheels);
 const DEMO_PROXY = import.meta.env.VITE_DEMO_PROXY_URL || 'https://yt-dlp-demo-proxy.project516.dev';
 const STORAGE_KEY = 'yt-dlp-wasm-demo';
 const MAX_LOG_LINES = 2000;
+const MAX_COOKIES_BYTES = 2 * 1024 * 1024;
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1']);
 
 const VIDEO_OPTIONS = {
@@ -62,6 +63,7 @@ function showSettings() {
   $('own-fields').hidden = settings.mode !== 'own';
   $('proxy-url').value = settings.url;
   $('proxy-key').value = settings.key;
+  showCookiesProxy();
 }
 
 function readSettings() {
@@ -71,6 +73,7 @@ function readSettings() {
   $('own-fields').hidden = settings.mode !== 'own';
   saveSettings(settings);
   showProxyUrlProblem();
+  showCookiesProxy();
 }
 
 function showProxyUrlProblem() {
@@ -85,6 +88,56 @@ showSettings();
 showProxyUrlProblem();
 
 const usingDemoProxy = () => settings.mode === 'demo';
+
+function showCookiesProxy() {
+  $('cookies-proxy').textContent = settings.mode === 'demo' ? 'the demo proxy' : 'your proxy';
+}
+
+// Cookies
+
+// A cookies file is a login, so it stays in memory and is never saved or put in a URL.
+// The version keys the runtime, so a changed file starts a fresh one without the text in the key.
+const cookies = { text: '', version: 0 };
+const cookiesInput = $('cookies-file');
+
+function showCookiesError(message) {
+  $('cookies-error').textContent = message;
+  $('cookies-error').hidden = !message;
+  cookiesInput.setAttribute('aria-invalid', String(Boolean(message)));
+}
+
+function setCookies(text, name) {
+  if (!text && !cookies.text) return;
+  cookies.text = text;
+  cookies.version++;
+  $('cookies-status').textContent = name ? `Loaded ${name}.` : '';
+  $('cookies-loaded').hidden = !name;
+  if (!name) cookiesInput.value = '';
+  // The old runtime still holds the previous cookies. A run in progress keeps them until it ends.
+  if (!busy) dropInstance();
+}
+
+cookiesInput.addEventListener('change', async () => {
+  const [file] = cookiesInput.files;
+  showCookiesError('');
+  if (!file) return setCookies('', '');
+  if (file.size > MAX_COOKIES_BYTES) {
+    setCookies('', '');
+    return showCookiesError('That file is too large for a cookies file.');
+  }
+  try {
+    setCookies(await file.text(), file.name);
+  } catch {
+    setCookies('', '');
+    showCookiesError('This page could not read that file.');
+  }
+});
+
+$('cookies-clear').addEventListener('click', () => {
+  showCookiesError('');
+  setCookies('', '');
+  cookiesInput.focus();
+});
 
 // Log
 
@@ -127,11 +180,11 @@ function dropInstance() {
 }
 
 function getYtDlp(proxy) {
-  const key = JSON.stringify(proxy);
+  const key = JSON.stringify([proxy, cookies.version]);
   if (instance?.key === key) return instance.promise;
   dropInstance();
   const entry = { key, ytdlp: null };
-  entry.promise = createYtDlp({ ...proxy, wheelURL, onLog }).then((ytdlp) => {
+  entry.promise = createYtDlp({ ...proxy, cookies: cookies.text || undefined, wheelURL, onLog }).then((ytdlp) => {
     if (instance !== entry) {
       ytdlp.terminate();
       throw SUPERSEDED;
@@ -226,7 +279,10 @@ function resetView() {
   logEl.textContent = '';
 }
 
-function setBusy(busy) {
+let busy = false;
+
+function setBusy(value) {
+  busy = value;
   goButton.disabled = busy;
   cancelButton.hidden = !busy;
   form.setAttribute('aria-busy', String(busy));
@@ -330,7 +386,7 @@ async function start(url, kind, codec) {
       if (panel) panel.open = true;
       error.target?.focus();
     } else {
-      const { title, detail } = explain(error, { usingDemoProxy: usingDemoProxy() });
+      const { title, detail } = explain(error, { usingDemoProxy: usingDemoProxy(), hasCookies: Boolean(cookies.text) });
       showError(title, detail);
     }
     $('show-log').hidden = !logLines.length;

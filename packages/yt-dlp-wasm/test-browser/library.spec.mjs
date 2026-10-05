@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { createProxies } from '../test-harness/test-host.mjs';
-import { FIXTURES, PACKAGE_ROOT, startMediaServer, startSiteServer } from '../test/servers.mjs';
+import { FIXTURES, PACKAGE_ROOT, cookiesFor, startMediaServer, startSiteServer } from '../test/servers.mjs';
 
 const REPO_ROOT = path.resolve(PACKAGE_ROOT, '../..');
 const fixtureBytes = (name) => [...fs.readFileSync(path.join(FIXTURES, name))];
@@ -117,6 +117,23 @@ test.describe('a media host without CORS, through the proxy', () => {
     expect(files).toHaveLength(1);
     expect(files[0]).toMatchObject({ name: 'song.m4a', mimeType: 'audio/mp4' });
     expect(files[0].bytes).toEqual(fixtureBytes('tiny.m4a'));
+  });
+
+  test('the cookies option reaches the media host through the proxy', async ({ browser }) => {
+    const cookiePage = await openPage(browser, site, {
+      corsProxy: `http://127.0.0.1:${proxy.port}/`,
+      cookies: cookiesFor('127.0.0.1', 'session', 'abc'),
+    });
+    try {
+      media.cookies.length = 0;
+      const { files } = await download(cookiePage, `${media.url}/tiny.m4a`, { outtmpl: 'song.%(ext)s' });
+      expect(files.map(({ name }) => name)).toEqual(['song.m4a']);
+      expect(media.cookies.length).toBeGreaterThan(0);
+      expect(media.cookies.every((header) => header === 'session=abc')).toBe(true);
+    } finally {
+      await cookiePage.evaluate(() => window.ytdlp.close());
+      await cookiePage.close();
+    }
   });
 });
 
