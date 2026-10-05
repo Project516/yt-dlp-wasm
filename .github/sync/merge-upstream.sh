@@ -81,10 +81,7 @@ if [ -s "$conflicts_file" ]; then
   exit 3
 fi
 
-git add pyproject.toml
-git commit -q -m "Merge yt-dlp ${tag}"
-
 node packages/yt-dlp-wasm/scripts/update-pins.mjs
-if ! git diff --quiet -- packages/yt-dlp-wasm/src/pins.json; then
-  git commit -q -m "Update the wasm dependency pins from upstream" -- packages/yt-dlp-wasm/src/pins.json
-fi
+git add pyproject.toml packages/yt-dlp-wasm/src/pins.json
+# One merge commit, so review-bot can review it against the upstream parent
+git commit -q -m "Merge yt-dlp ${tag}"
