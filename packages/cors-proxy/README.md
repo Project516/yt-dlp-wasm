@@ -53,20 +53,22 @@ A page that hosts yt-dlp-wasm passes them in the `env` option of `loadPyodide`.
 With the key in page code, anyone who can load the page can read it. Keep the
 page private, or use a key you can rotate.
 
-## Run it at home on a Raspberry Pi
+## Run it at home
 
 YouTube often answers requests from Cloudflare Workers with "Sign in to
 confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
 proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
-on Node.js 18 or newer, and `pi/setup.sh` installs it as a systemd service on
-Raspberry Pi OS, Debian or Ubuntu (armhf, arm64 or amd64). Cloudflare Tunnel
-publishes it, so you open no port on your router.
+on Node.js 18 or newer, and `pi/setup.sh` installs it as a systemd service. You
+need a machine that is always online, runs Linux with systemd (Debian or
+Ubuntu based, Raspberry Pi OS included) on armhf, arm64 or amd64, and has about
+512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
+your router.
 
 1. In the Cloudflare dashboard, go to Zero Trust, Networks, Tunnels and create
    a tunnel. Choose the Cloudflared connector and copy the token.
 2. Add a public hostname to the tunnel with the service
    `http://localhost:8787`.
-3. On the Pi, run the installer with the token:
+3. On that machine, run the installer with the token:
 
    ```sh
    curl -fsSL https://raw.githubusercontent.com/Project516/yt-dlp-wasm/master/packages/cors-proxy/pi/setup.sh | sudo bash -s -- --tunnel-token TOKEN
@@ -88,7 +90,7 @@ resolve to loopback, private, link-local or other internal addresses, with a
 name before the fetch does, so a DNS server that changes its answer between
 the two lookups can get around it. Keep the access key secret.
 
-The Pi must stay online and connected for the proxy to work.
+The machine must stay online for the proxy to work.
 
 ## Settings
 
