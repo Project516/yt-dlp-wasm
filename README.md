@@ -11,7 +11,7 @@ It is a fork of yt-dlp. The extractors, format selection, output templates, and 
 - **Fetch request handler.** Sends yt-dlp's HTTP requests with the host's `fetch`, since Pyodide has no raw sockets.
 - **ffmpeg bridge.** Runs the `ffmpeg` and `ffprobe` commands that yt-dlp issues on [ffmpeg.wasm](https://github.com/Project516/ffmpeg.wasm), a fork maintained alongside this project, instead of starting a subprocess.
 - **YouTube JS challenge provider.** Runs the [EJS solver](https://github.com/yt-dlp/ejs) that YouTube needs on the host's own JavaScript engine.
-- **CORS proxy.** A small Cloudflare Worker in [`packages/cors-proxy`](packages/cors-proxy) that relays requests for browsers. It also carries the headers browsers refuse to set, so cookies and redirects work as they do in Node.js.
+- **CORS proxy.** A small proxy in [`packages/cors-proxy`](packages/cors-proxy) that relays requests for browsers. It runs as a Cloudflare Worker or on a Linux machine at home. It also carries the headers browsers refuse to set, so cookies and redirects work as they do in Node.js.
 
 The wasm code lives in new files and in small changes to upstream files that apply only when `sys.platform == 'emscripten'`. That keeps merges from upstream cheap.
 
@@ -81,7 +81,7 @@ A browser `download` resolves with `{ name, data, mimeType }` for each file, wit
 
 yt-dlp makes blocking network and ffmpeg calls. Pyodide waits on them with JavaScript Promise Integration (JSPI), so the runtime must have it: Chrome 137, Firefox 153, Safari 27 or Node.js 25. Without JSPI, `createYtDlp` rejects and names those versions.
 
-A browser blocks a request to another origin unless that origin allows it, and most sites do not. Set `corsProxy` to your own deployment of [`packages/cors-proxy`](packages/cors-proxy). Its README shows how to run one on Cloudflare's free plan. Node.js sends requests directly and needs no proxy.
+A browser blocks a request to another origin unless that origin allows it, and most sites do not. Set `corsProxy` to your own deployment of [`packages/cors-proxy`](packages/cors-proxy). Its README shows how to run one on Cloudflare's free plan, or on an always-on Linux machine at home with about 512 MB of RAM. YouTube often refuses requests from Cloudflare Workers, because they share datacenter IP addresses, so use a proxy at home for YouTube. Node.js sends requests directly and needs no proxy.
 
 ## Differences from yt-dlp
 
