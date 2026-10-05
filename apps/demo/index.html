@@ -120,7 +120,7 @@
       <summary>Cookies</summary>
       <div class="panel-body">
         <p>Some sites, such as YouTube, refuse requests unless you are signed in. Load a cookies.txt file from a browser that is signed in, and this page sends those cookies with its requests.</p>
-        <p id="cookies-warning" class="warning">The cookies sign this page in as that account. They pass through <span id="cookies-proxy">the demo proxy</span> with every request to the site. Use a separate account, because YouTube can flag accounts used this way. This page keeps the file only until you close or reload it.</p>
+        <p id="cookies-warning" class="warning">Whoever runs <span id="cookies-proxy">the demo proxy</span> can see these cookies, because every request to the site passes through it. Only load cookies if you trust the proxy in use. Use a separate account, because YouTube can flag accounts used this way. This page keeps the file only until you close or reload it.</p>
         <div class="field">
           <label for="cookies-file">Cookies file</label>
           <input id="cookies-file" type="file" accept=".txt,text/plain" aria-describedby="cookies-warning cookies-error">

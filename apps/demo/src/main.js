@@ -90,7 +90,7 @@ showProxyUrlProblem();
 const usingDemoProxy = () => settings.mode === 'demo';
 
 function showCookiesProxy() {
-  $('cookies-proxy').textContent = settings.mode === 'demo' ? 'the demo proxy' : 'your proxy';
+  $('cookies-proxy').textContent = settings.mode === 'demo' ? 'the demo proxy' : 'your custom proxy';
 }
 
 // Cookies
