@@ -14,7 +14,7 @@ import sys
 
 
 def start(module, handler, server, certfile, cafile):
-    from test.helper import start_http_server
+    from test.wasm_helper import start_http_server
 
     handler_class = functools.reduce(getattr, handler.split('.'), importlib.import_module(module))
     return start_http_server(

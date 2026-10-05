@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import http.server
 import re
 
-from test.helper import http_server_port, start_http_server, try_rm
+from test.helper import http_server_port, try_rm
+from test.wasm_helper import start_http_server
 from yt_dlp import YoutubeDL
 from yt_dlp.downloader.http import HttpFD
 from yt_dlp.utils._utils import _YDLLogger as FakeLogger

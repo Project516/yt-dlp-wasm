@@ -53,8 +53,12 @@ test server started on a thread. Adapt it so it still checks the same behavior
 where possible. Otherwise skip it on emscripten with a reason that names the
 limit. Never skip a test because a feature is unfinished.
 
+Prefer a fork-owned hook over an edit to an upstream test file. The plugin
+`test/conftest_wasm.py` adds `Fetch` to upstream's handler parametrizations and
+applies the wasm and Fetch skips by test id. The root `conftest.py` registers it.
+
 Test HTTP servers cannot run in Pyodide, which has no sockets or threads.
-`start_http_server` in `test/helper.py` runs them in the sidecar instead. The
+`start_http_server` in `test/wasm_helper.py` runs them in the sidecar instead. The
 `test-harness/test-host.mjs` module starts it with `python3`, or with the interpreter in
 `YTDLP_TEST_PYTHON`. That interpreter needs the packages in
 `bundle/requirements/test.txt` and `default.txt`.
@@ -125,6 +129,14 @@ The library installs the Python dependencies in `src/pins.json`.
 `scripts/update-pins.mjs` writes it from `bundle/requirements/default.txt`, and
 both `pnpm build` and the sync run it. A dependency that upstream adds fails
 `test/pins.test.mjs` until it is classified in that script.
+
+## Dependabot
+
+`.github/dependabot.yml` ignores every Python dependency, because upstream owns
+`pyproject.toml`, `uv.lock` and `bundle/requirements/` and each sync brings the
+bumps. Close a Dependabot PR that touches those files, security PRs included.
+Only the npm packages get Dependabot PRs. `pyodide` majors and
+`@project516/ffmpeg-wasm-core` are bumped by hand with feature tests.
 
 ## Review
 

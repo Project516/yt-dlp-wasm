@@ -10,13 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import http.server
 
-from test.helper import (
-    FakeYDL,
-    expect_dict,
-    expect_value,
-    http_server_port,
-    start_http_server,
-)
+from test.helper import FakeYDL, expect_dict, expect_value, http_server_port
+from test.wasm_helper import start_http_server
 from yt_dlp.compat import compat_etree_fromstring
 from yt_dlp.extractor import YoutubeIE, get_info_extractor
 from yt_dlp.extractor.common import InfoExtractor
@@ -70,7 +65,6 @@ class TestInfoExtractor(unittest.TestCase):
     def test_ie_key(self):
         self.assertEqual(get_info_extractor(YoutubeIE.ie_key()), YoutubeIE)
 
-    @unittest.skipIf(sys.platform == 'emscripten', '--netrc-cmd needs a shell, which wasm does not have')
     def test_get_netrc_login_info(self):
         for params in [
             {'usenetrc': True, 'netrc_location': './test/testdata/netrc/netrc'},
