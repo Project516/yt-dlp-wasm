@@ -47,7 +47,7 @@ Five suites must pass on every PR:
   and only CI runs it.
 - The proxy tests in `packages/cors-proxy`. `npm test` runs the `node:test`
   suite, and CI runs it on Node 18 and 26 as `Proxy tests (Node.js)`. The job
-  `Proxy setup (Linux arm64)` runs `pi/setup.sh` on an arm64 runner. It checks
+  `Proxy setup (Linux arm64)` runs `setup.sh` on an arm64 runner. It checks
   a request, a refused private target, a second run and `--uninstall`.
 - The demo's tests in `apps/demo`. `pnpm test` runs the unit tests with
   `node:test`. For the smoke test, build the wheel and the demo, then run
@@ -177,7 +177,7 @@ Sonnet subagent reviews instead.
   headers and cookies in `X-Ytdlp-*` headers, and the handler follows redirects
   itself.
 - **Home proxy**: `packages/cors-proxy/node.mjs`, which runs `worker.js` on
-  Node's http server. `pi/setup.sh` installs it as a systemd service, usually
+  Node's http server. `setup.sh` installs it as a systemd service, usually
   behind a Cloudflare Tunnel, so requests leave from a residential IP. It
   refuses private targets unless `ALLOW_PRIVATE_TARGETS=true`. The test
   harness uses it for its in-process proxies.

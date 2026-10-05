@@ -58,7 +58,7 @@ page private, or use a key you can rotate.
 YouTube often answers requests from Cloudflare Workers with "Sign in to
 confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
 proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
-on Node.js 18 or newer, and `pi/setup.sh` installs it as a systemd service. You
+on Node.js 18 or newer, and `setup.sh` installs it as a systemd service. You
 need a machine that is always online, runs Linux with systemd (Debian or
 Ubuntu based, Raspberry Pi OS included) on armhf, arm64 or amd64, and has about
 512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
@@ -71,10 +71,10 @@ your router.
 3. On that machine, run the installer with the token:
 
    ```sh
-   curl -fsSL https://raw.githubusercontent.com/Project516/yt-dlp-wasm/master/packages/cors-proxy/pi/setup.sh | sudo bash -s -- --tunnel-token TOKEN
+   curl -fsSL https://raw.githubusercontent.com/Project516/yt-dlp-wasm/master/packages/cors-proxy/setup.sh | sudo bash -s -- --tunnel-token TOKEN
    ```
 
-   From a clone, run `sudo packages/cors-proxy/pi/setup.sh --tunnel-token TOKEN`.
+   From a clone, run `sudo packages/cors-proxy/setup.sh --tunnel-token TOKEN`.
 4. The script prints an access key. In the demo, open Proxy settings, pick
    Custom proxy, and enter the tunnel's public URL and the key.
 

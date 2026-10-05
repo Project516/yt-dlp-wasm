@@ -133,8 +133,8 @@ install_files() {
   if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
     script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
   fi
-  if [ -n "$script_dir" ] && [ -f "$script_dir/../worker.js" ] && [ -f "$script_dir/../node.mjs" ]; then
-    install -m 644 "$script_dir/../worker.js" "$script_dir/../node.mjs" "$APP_DIR/"
+  if [ -n "$script_dir" ] && [ -f "$script_dir/worker.js" ] && [ -f "$script_dir/node.mjs" ]; then
+    install -m 644 "$script_dir/worker.js" "$script_dir/node.mjs" "$APP_DIR/"
   else
     local file
     for file in worker.js node.mjs; do
