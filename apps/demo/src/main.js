@@ -2,6 +2,7 @@ import { createYtDlp } from '@project516/yt-dlp-wasm';
 import './style.css';
 import { explain } from './explain.js';
 import { formatBytes, formatDuration, formatEta } from './format.js';
+import { retryFlagged } from './retry.js';
 
 const wheels = import.meta.glob('../../../packages/yt-dlp-wasm/dist/*.whl', { query: '?url', import: 'default', eager: true });
 const [wheelURL] = Object.values(wheels);
@@ -218,6 +219,7 @@ function resetView() {
   $('done').hidden = true;
   $('canceled').hidden = true;
   bar.removeAttribute('value');
+  $('info-detail').textContent = '';
   $('download-detail').textContent = '';
   $('process-detail').textContent = '';
   logLines.length = 0;
@@ -294,8 +296,15 @@ async function start(url, kind, codec) {
     if (run.canceled) return;
 
     setStage('info');
-    const info = await ytdlp.extractInfo(url, { noplaylist: true });
+    const info = await retryFlagged(() => ytdlp.extractInfo(url, { noplaylist: true }), {
+      canceled: () => run.canceled,
+      onRetry: (attempt, retries) => {
+        $('info-detail').textContent = `The site refused the proxy. Trying again (${attempt} of ${retries}).`;
+        onLog(`[demo] The site refused the proxy, trying again (${attempt} of ${retries})`);
+      },
+    });
     if (run.canceled) return;
+    $('info-detail').textContent = '';
     if (info._type === 'playlist') throw new UserError('This link is a playlist', 'Paste the link of one video.');
     showMedia(info);
 
