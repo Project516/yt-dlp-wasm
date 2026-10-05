@@ -71,6 +71,9 @@ export default {
     if (target.protocol !== 'http:' && target.protocol !== 'https:') {
       return refuse(400, 'Only http and https targets are allowed', cors);
     }
+    // Optional hook that node.mjs sets to refuse private targets
+    const refusal = await env.checkTarget?.(target);
+    if (refusal) return refuse(403, refusal, cors);
     // The runtime negotiates the encoding itself and decodes the body
     headers.delete('Accept-Encoding');
     // Without it Node.js sends a streamed body chunked, which some servers reject
