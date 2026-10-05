@@ -222,17 +222,14 @@ test('the proxy URL must be https, or http on localhost', async ({ page }) => {
   }
 });
 
-test('the cookies warning names the proxy in use', async ({ page }) => {
+test('the cookies warning says the proxy can see them', async ({ page }) => {
   await page.goto(PAGE);
   await page.locator('#cookies-panel summary').click();
   const warning = page.locator('#cookies-warning');
-  await expect(warning).toContainText('Whoever runs the demo proxy can see these cookies');
+  await expect(warning).toContainText('Whoever runs the proxy can see these cookies');
   await expect(warning).toContainText('Only load cookies if you trust the proxy in use');
   await expect(warning).toContainText('until you close or reload it');
   await expect(page.getByLabel('Cookies file')).toHaveAttribute('aria-describedby', /cookies-warning/);
-  await page.getByText('Proxy settings').click();
-  await page.getByRole('radio', { name: 'Custom proxy' }).check();
-  await expect(warning).toContainText('Whoever runs your custom proxy can see these cookies');
 });
 
 test('a cookies file that is too large is refused', async ({ page }) => {

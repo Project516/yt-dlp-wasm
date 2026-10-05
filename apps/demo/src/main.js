@@ -63,7 +63,6 @@ function showSettings() {
   $('own-fields').hidden = settings.mode !== 'own';
   $('proxy-url').value = settings.url;
   $('proxy-key').value = settings.key;
-  showCookiesProxy();
 }
 
 function readSettings() {
@@ -73,7 +72,6 @@ function readSettings() {
   $('own-fields').hidden = settings.mode !== 'own';
   saveSettings(settings);
   showProxyUrlProblem();
-  showCookiesProxy();
 }
 
 function showProxyUrlProblem() {
@@ -88,10 +86,6 @@ showSettings();
 showProxyUrlProblem();
 
 const usingDemoProxy = () => settings.mode === 'demo';
-
-function showCookiesProxy() {
-  $('cookies-proxy').textContent = settings.mode === 'demo' ? 'the demo proxy' : 'your custom proxy';
-}
 
 // Cookies
 
