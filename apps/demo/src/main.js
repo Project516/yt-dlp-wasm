@@ -99,6 +99,7 @@ function showCookiesProxy() {
 // The version keys the runtime, so a changed file starts a fresh one without the text in the key.
 const cookies = { text: '', version: 0 };
 const cookiesInput = $('cookies-file');
+let cookiesSelection = 0;
 
 function showCookiesError(message) {
   $('cookies-error').textContent = message;
@@ -117,7 +118,9 @@ function setCookies(text, name) {
   if (!busy) dropInstance();
 }
 
+// A read that finishes after Clear or a newer selection is dropped
 cookiesInput.addEventListener('change', async () => {
+  const selection = ++cookiesSelection;
   const [file] = cookiesInput.files;
   showCookiesError('');
   if (!file) return setCookies('', '');
@@ -126,14 +129,17 @@ cookiesInput.addEventListener('change', async () => {
     return showCookiesError('That file is too large for a cookies file.');
   }
   try {
-    setCookies(await file.text(), file.name);
+    const text = await file.text();
+    if (selection === cookiesSelection) setCookies(text, file.name);
   } catch {
+    if (selection !== cookiesSelection) return;
     setCookies('', '');
     showCookiesError('This page could not read that file.');
   }
 });
 
 $('cookies-clear').addEventListener('click', () => {
+  cookiesSelection++;
   showCookiesError('');
   setCookies('', '');
   cookiesInput.focus();

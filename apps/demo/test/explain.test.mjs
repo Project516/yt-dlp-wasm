@@ -18,6 +18,6 @@ test('the bot check suggests fresh cookies when some are loaded', () => {
 });
 
 test('a bad cookies file gets its own message', () => {
-  const error = new Error("ERROR: '/yt-dlp-wasm/cookies.txt' does not look like a Netscape format cookies file");
+  const error = new Error("ERROR: '/.yt-dlp-wasm/cookies.txt' does not look like a Netscape format cookies file");
   assert.equal(explain(error, { usingDemoProxy: true }).title, 'That is not a cookies.txt file');
 });
