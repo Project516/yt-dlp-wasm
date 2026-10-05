@@ -136,6 +136,9 @@ jobs:
     - name: Build the yt-dlp wheel
       working-directory: packages/yt-dlp-wasm
       run: pnpm build
+    - name: Run unit tests
+      working-directory: apps/demo
+      run: pnpm test
     - name: Build the demo
       working-directory: apps/demo
       run: pnpm build

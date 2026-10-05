@@ -45,8 +45,9 @@ Four suites must pass on every PR:
 - The library tests in `packages/yt-dlp-wasm`. `pnpm test` runs the Node.js ones
   with `node:test`. `pnpm test:browser` runs Playwright on headless Chromium,
   and only CI runs it.
-- The demo's smoke test in `apps/demo`. Build the wheel and the demo, then
-  `pnpm test:browser` there. Only CI runs it.
+- The demo's tests in `apps/demo`. `pnpm test` runs the unit tests with
+  `node:test`. For the smoke test, build the wheel and the demo, then run
+  `pnpm test:browser` there. Only CI runs the smoke test.
 
 A test may change for wasm only when it hits a platform limit, for example a
 test server started on a thread. Adapt it so it still checks the same behavior

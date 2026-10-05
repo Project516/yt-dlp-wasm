@@ -22,7 +22,10 @@ export function explain(error, { usingDemoProxy }) {
     return { title: `Could not reach ${proxy}`, detail: 'Check your connection and the proxy URL. A proxy that does not allow this site fails the same way.' };
   }
   if (/sign in to confirm|not a bot/i.test(raw)) {
-    return { title: 'The site asks for a sign-in check', detail: 'This page cannot sign in, so it cannot get this video.' };
+    return { title: 'The site asked for a bot check', detail: `It flags the shared addresses ${proxy} fetches from on some requests. Try again in a minute.` };
+  }
+  if (/HTTP Error 429/.test(raw)) {
+    return { title: 'The site is rate limiting the proxy', detail: `It limits the shared addresses ${proxy} fetches from. Try again in a minute.` };
   }
   if (/out of memory|RangeError|worker failed|allocation/i.test(raw)) {
     return { title: 'The browser ran out of memory', detail: 'This video is too large for this device. Try audio only.' };
