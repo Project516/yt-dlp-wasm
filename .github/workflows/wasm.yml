@@ -149,3 +149,68 @@ jobs:
       timeout-minutes: 20
       working-directory: apps/demo
       run: pnpm test:browser
+
+  proxy:
+    name: Proxy tests (Node.js)
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['18', '26']
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: ${{ matrix.node-version }}
+        package-manager-cache: false
+    - name: Run tests
+      timeout-minutes: 5
+      working-directory: packages/cors-proxy
+      run: npm test
+
+  proxy-setup:
+    name: Proxy setup (Linux arm64)
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04-arm
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Install
+      timeout-minutes: 10
+      run: sudo packages/cors-proxy/pi/setup.sh
+    - name: Check the service
+      run: |
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+        key=$(sudo sed -n 's/^ACCESS_KEY=//p' /etc/yt-dlp-wasm-proxy/env)
+        echo "::add-mask::$key"
+        test -n "$key"
+        [ "$(sudo stat -c '%a %U' /etc/yt-dlp-wasm-proxy/env)" = '600 root' ]
+        proxy=http://127.0.0.1:8787/
+        origin=https://yt-dlp-wasm.project516.dev
+        headers=$(curl -sS -D - -o /dev/null -H "Origin: $origin" -H "X-Ytdlp-Key: $key" "$proxy?url=https://example.com/")
+        echo "$headers"
+        echo "$headers" | tr -d '\r' | grep -ix 'x-ytdlp-status: 200'
+        code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Origin: $origin" -H "X-Ytdlp-Key: $key" "$proxy?url=http://127.0.0.1/")
+        test "$code" = 403
+        code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Origin: $origin" "$proxy?url=https://example.com/")
+        test "$code" = 403
+    - name: Run the installer again
+      run: |
+        before=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
+        sudo packages/cors-proxy/pi/setup.sh
+        after=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
+        test "$before" = "$after"
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+    - name: Uninstall
+      run: |
+        sudo packages/cors-proxy/pi/setup.sh --uninstall
+        test -z "$(systemctl list-unit-files yt-dlp-wasm-proxy.service --no-legend)"
+        test "$(systemctl is-active yt-dlp-wasm-proxy || true)" != active
+        test ! -e /opt/yt-dlp-wasm-proxy
+        test ! -e /etc/yt-dlp-wasm-proxy

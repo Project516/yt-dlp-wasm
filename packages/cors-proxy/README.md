@@ -53,6 +53,45 @@ A page that hosts yt-dlp-wasm passes them in the `env` option of `loadPyodide`.
 With the key in page code, anyone who can load the page can read it. Keep the
 page private, or use a key you can rotate.
 
+## Run it at home
+
+YouTube often answers requests from Cloudflare Workers with "Sign in to
+confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
+proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
+on Node.js 18 or newer, and `pi/setup.sh` installs it as a systemd service. You
+need a machine that is always online, runs Linux with systemd (Debian or
+Ubuntu based, Raspberry Pi OS included) on armhf, arm64 or amd64, and has about
+512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
+your router.
+
+1. In the Cloudflare dashboard, go to Zero Trust, Networks, Tunnels and create
+   a tunnel. Choose the Cloudflared connector and copy the token.
+2. Add a public hostname to the tunnel with the service
+   `http://localhost:8787`.
+3. On that machine, run the installer with the token:
+
+   ```sh
+   curl -fsSL https://raw.githubusercontent.com/Project516/yt-dlp-wasm/master/packages/cors-proxy/pi/setup.sh | sudo bash -s -- --tunnel-token TOKEN
+   ```
+
+   From a clone, run `sudo packages/cors-proxy/pi/setup.sh --tunnel-token TOKEN`.
+4. The script prints an access key. In the demo, open Proxy settings, pick
+   Custom proxy, and enter the tunnel's public URL and the key.
+
+The script also takes `--origins LIST` (default
+`https://yt-dlp-wasm.project516.dev`), `--port N` (default 8787), `--ref REF`
+(the git ref to download from) and `--uninstall`. Running it again keeps the
+access key and the settings you do not override. The key and settings are in
+`/etc/yt-dlp-wasm-proxy/env`, readable by root only.
+
+A proxy at home can reach your home network, so `node.mjs` refuses targets that
+resolve to loopback, private, link-local or other internal addresses, with a
+403. `ALLOW_PRIVATE_TARGETS=true` turns the check off. The check resolves the
+name before the fetch does, so a DNS server that changes its answer between
+the two lookups can get around it. Keep the access key secret.
+
+The machine must stay online for the proxy to work.
+
 ## Settings
 
 | Variable | Meaning |
@@ -60,6 +99,8 @@ page private, or use a key you can rotate.
 | `ALLOWED_ORIGINS` | Comma-separated list of origins that may use the proxy. Requests from other origins, or without an `Origin` header, get a 403. A port of `*`, as in `http://localhost:*`, matches any port. A bare `*` allows every origin, and only works when `ACCESS_KEY` is set. |
 | `ACCESS_KEY` | When set, requests must send it in the `X-Ytdlp-Key` header. Set it as a secret, never in `wrangler.toml`. |
 | `REQUIRE_ACCESS_KEY` | When set, requests are refused until `ACCESS_KEY` exists. The `personal` environment sets it. |
+| `ALLOW_PRIVATE_TARGETS` | `node.mjs` only. Set to `true` to allow targets on loopback and private networks. Off by default. |
+| `HOST`, `PORT` | `node.mjs` only. Where it listens. The defaults are `127.0.0.1` and `8787`. |
 | `RATE_LIMITER` | Optional rate limit binding. When present, each client IP is limited by it. The `demo` environment sets one. |
 
 The worker only fetches `http` and `https` URLs.

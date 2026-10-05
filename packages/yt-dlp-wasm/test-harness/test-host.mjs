@@ -2,42 +2,22 @@
 // test suite's HTTP servers in a CPython process because Pyodide has no
 // sockets or threads. Set YTDLP_TEST_PYTHON to use another interpreter.
 import { spawn } from 'node:child_process';
-import http from 'node:http';
 import path from 'node:path';
 import readline from 'node:readline';
-import { Readable } from 'node:stream';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-server.py');
 
-// Serves the CORS proxy worker in-process. Node.js sends no Origin, so `origin`
-// stands in for the browser's.
+// Serves the CORS proxy in-process. Node.js sends no Origin, so `origin`
+// stands in for the browser's. The test servers are on loopback.
 export function createProxies(root) {
   const servers = new Map();
   let nextId = 0;
 
   async function start(envJson, origin) {
-    const worker = (await import(pathToFileURL(path.join(root, 'packages/cors-proxy/worker.js')))).default;
-    const env = JSON.parse(envJson);
-    const server = http.createServer(async (req, res) => {
-      try {
-        const headers = new Headers();
-        for (const [name, value] of Object.entries(req.headers)) headers.set(name, value);
-        if (origin && !headers.has('Origin')) headers.set('Origin', origin);
-        const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
-        const response = await worker.fetch(new Request(`http://${req.headers.host}${req.url}`, {
-          method: req.method,
-          headers,
-          body: hasBody ? Readable.toWeb(req) : undefined,
-          duplex: 'half',
-        }), env);
-        res.writeHead(response.status, [...response.headers]);
-        if (response.body) Readable.fromWeb(response.body).on('error', () => res.destroy()).pipe(res);
-        else res.end();
-      } catch (error) {
-        res.writeHead(500).end(String(error));
-      }
-    });
+    const { createProxyServer } = await import(pathToFileURL(path.join(root, 'packages/cors-proxy/node.mjs')));
+    const env = { ...JSON.parse(envJson), ALLOW_PRIVATE_TARGETS: true };
+    const server = createProxyServer(env, { origin });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     const id = nextId++;
     servers.set(id, server);
