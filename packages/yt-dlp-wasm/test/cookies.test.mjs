@@ -79,6 +79,18 @@ describe('cookies in Node.js', () => {
     }
   });
 
+  test('an empty string means no cookies', async () => {
+    const empty = await createYtDlp({ cookies: '' });
+    try {
+      media.cookies.length = 0;
+      await empty.extractInfo(url());
+      assert.ok(media.cookies.length > 0);
+      assert.ok(media.cookies.every((header) => header === ''));
+    } finally {
+      await empty.close();
+    }
+  });
+
   test('cookies must be text', async () => {
     await assert.rejects(createYtDlp({ cookies: 42 }), TypeError);
   });

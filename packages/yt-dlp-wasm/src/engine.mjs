@@ -12,7 +12,7 @@ export async function createEngine({ py, wheel, createHost, cookies }) {
   await installDependencies(py);
   await py.pyimport('micropip').install(wheel);
 
-  const hasCookies = cookies != null;
+  const hasCookies = Boolean(cookies);
   if (hasCookies) {
     py.FS.mkdirTree(COOKIES_PATH.slice(0, COOKIES_PATH.lastIndexOf('/')));
     py.FS.writeFile(COOKIES_PATH, cookies);
