@@ -121,15 +121,6 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
       }
     }
 
-    if (program === 'ffprobe') {
-      // ffprobe returns its status without setting `ret` unless it calls exit
-      const probe = core._ffprobe;
-      core._ffprobe = (...probeArgs) => {
-        const status = probe(...probeArgs);
-        if (core.ret < 0) core.ret = status;
-        return status;
-      };
-    }
     let code;
     try {
       code = await core[PROGRAMS[program]](...args);
