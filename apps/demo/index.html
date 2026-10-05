@@ -116,6 +116,23 @@
       </div>
     </details>
 
+    <details id="cookies-panel" class="panel">
+      <summary>Cookies</summary>
+      <div class="panel-body">
+        <p>Some sites, such as YouTube, refuse requests unless you are signed in. Load a cookies.txt file from a browser that is signed in, and this page sends those cookies with its requests.</p>
+        <p id="cookies-warning" class="warning">Whoever runs <span id="cookies-proxy">the demo proxy</span> can see these cookies, because every request to the site passes through it. Only load cookies if you trust the proxy in use. Use a separate account, because YouTube can flag accounts used this way. This page keeps the file only until you close or reload it.</p>
+        <div class="field">
+          <label for="cookies-file">Cookies file</label>
+          <input id="cookies-file" type="file" accept=".txt,text/plain" aria-describedby="cookies-warning cookies-error">
+          <p id="cookies-error" class="field-error" hidden></p>
+        </div>
+        <div id="cookies-loaded" class="cookies-loaded" hidden>
+          <p id="cookies-status" role="status"></p>
+          <button type="button" id="cookies-clear" class="secondary small">Clear cookies</button>
+        </div>
+      </div>
+    </details>
+
     <details id="log-panel" class="panel">
       <summary>Log</summary>
       <div class="panel-body">

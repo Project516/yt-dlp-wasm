@@ -38,6 +38,7 @@ await ytdlp.close();
 `createYtDlp(options)` takes these, all optional:
 
 - `corsProxy`, `corsProxyKey`: URL and access key of a CORS proxy.
+- `cookies`: the text of a Netscape `cookies.txt` file. `extractInfo` and `download` use it as `cookiefile` unless their options set one. `run` adds `--cookies` unless the arguments have `--cookies` or `--no-cookies`. The file stays in Pyodide's memory and is never written to disk. In a browser the cookies go through your CORS proxy, and whoever runs it can see them, so use cookies only with a proxy you trust.
 - `pyodideIndexURL`: where Pyodide loads from. The default is jsDelivr in browsers and the installed `pyodide` package in Node.js.
 - `ffmpegCoreURL`: where the ffmpeg.wasm core loads from in browsers. The default is jsDelivr.
 - `wheelURL`: the yt-dlp wheel in browsers. The default is the package's `dist/` folder next to the module, so a bundler has to serve that folder or you pass this.

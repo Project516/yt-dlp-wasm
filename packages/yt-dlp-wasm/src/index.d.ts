@@ -3,6 +3,13 @@ export interface YtDlpOptions {
   corsProxy?: string;
   /** Access key for the proxy. */
   corsProxyKey?: string;
+  /**
+   * The text of a Netscape cookies.txt file. `extractInfo` and `download` use it as `cookiefile`
+   * unless their options set one. `run` adds `--cookies` unless the arguments have
+   * `--cookies` or `--no-cookies`. It stays in memory and is never written to disk.
+   * An empty string means no cookies.
+   */
+  cookies?: string;
   /** Where Pyodide loads from. Defaults to jsDelivr in browsers and to the npm package in Node.js. */
   pyodideIndexURL?: string;
   /** Browser only. Where the ffmpeg.wasm core loads from. Defaults to jsDelivr. */

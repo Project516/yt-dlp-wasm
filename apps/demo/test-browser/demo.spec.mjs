@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { createProxies } from '../../../packages/yt-dlp-wasm/test-harness/test-host.mjs';
-import { FIXTURES, startMediaServer } from '../../../packages/yt-dlp-wasm/test/servers.mjs';
+import { FIXTURES, cookiesFor, startMediaServer } from '../../../packages/yt-dlp-wasm/test/servers.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '../../..');
 const SITE = 'http://127.0.0.1:4173';
@@ -126,6 +126,50 @@ test.describe('with a media host behind the proxy', () => {
     await demo.close();
   });
 
+  test('a cookies file reaches the media host through the proxy until it is cleared', async ({ browser }) => {
+    const { demo, pageErrors } = await openDemo(browser);
+    try {
+      await demo.locator('#cookies-panel summary').click();
+      await demo.getByLabel('Cookies file').setInputFiles({
+        name: 'cookies.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.from(cookiesFor('127.0.0.1', 'session', 'abc')),
+      });
+      await expect(demo.locator('#cookies-status')).toHaveText('Loaded cookies.txt.');
+
+      media.cookies.length = 0;
+      await demo.getByLabel('Link').fill(`${media.url}/tiny.mp4`);
+      let [saved] = await Promise.all([
+        demo.waitForEvent('download'),
+        demo.getByRole('button', { name: 'Download' }).click(),
+      ]);
+      expect(saved.suggestedFilename()).toBe('tiny.mp4');
+      expect(media.cookies.length).toBeGreaterThan(0);
+      expect(media.cookies.every((header) => header === 'session=abc')).toBe(true);
+
+      const stored = await demo.evaluate(() => JSON.stringify([{ ...localStorage }, { ...sessionStorage }, location.href]));
+      expect(stored).not.toContain('session');
+      expect(stored).not.toContain('abc');
+
+      await demo.getByRole('button', { name: 'Clear cookies' }).click();
+      await expect(demo.locator('#cookies-loaded')).toBeHidden();
+      await expect(demo.getByLabel('Cookies file')).toHaveValue('');
+      await expect.poll(() => demo.evaluate(() => window.liveWorkers.size)).toBe(0);
+
+      media.cookies.length = 0;
+      [saved] = await Promise.all([
+        demo.waitForEvent('download'),
+        demo.getByRole('button', { name: 'Download' }).click(),
+      ]);
+      expect(saved.suggestedFilename()).toBe('tiny.mp4');
+      expect(media.cookies.length).toBeGreaterThan(0);
+      expect(media.cookies.every((header) => header === '')).toBe(true);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await demo.close();
+    }
+  });
+
   test('Cancel works while the proxy settings are invalid', async ({ browser }) => {
     const hung = http.createServer();
     await new Promise((resolve) => hung.listen(0, '127.0.0.1', resolve));
@@ -176,6 +220,27 @@ test('the proxy URL must be https, or http on localhost', async ({ page }) => {
     await input.fill(url);
     await expect(error).toBeHidden();
   }
+});
+
+test('the cookies warning names the proxy in use', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.locator('#cookies-panel summary').click();
+  const warning = page.locator('#cookies-warning');
+  await expect(warning).toContainText('Whoever runs the demo proxy can see these cookies');
+  await expect(warning).toContainText('Only load cookies if you trust the proxy in use');
+  await expect(warning).toContainText('until you close or reload it');
+  await expect(page.getByLabel('Cookies file')).toHaveAttribute('aria-describedby', /cookies-warning/);
+  await page.getByText('Proxy settings').click();
+  await page.getByRole('radio', { name: 'Custom proxy' }).check();
+  await expect(warning).toContainText('Whoever runs your custom proxy can see these cookies');
+});
+
+test('a cookies file that is too large is refused', async ({ page }) => {
+  await page.goto(PAGE);
+  await page.locator('#cookies-panel summary').click();
+  await page.getByLabel('Cookies file').setInputFiles({ name: 'big.txt', mimeType: 'text/plain', buffer: Buffer.alloc(3 * 1024 * 1024) });
+  await expect(page.locator('#cookies-error')).toHaveText('That file is too large for a cookies file.');
+  await expect(page.locator('#cookies-loaded')).toBeHidden();
 });
 
 test('the page links to the repository above the fold', async ({ page }) => {

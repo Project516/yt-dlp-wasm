@@ -1,14 +1,22 @@
 // Runs the library's Python API on a Pyodide instance. Shared by the Node.js
 // entry and the browser worker.
+import { COOKIES_PATH } from './cookies.mjs';
 import { installDependencies } from './dependencies.mjs';
 import { YtDlpError } from './errors.mjs';
 import { PYTHON_API } from './python-api.mjs';
 
 // `wheel` is a URL micropip can install: http(s) in browsers, emfs: in Node.js.
 // `createHost` builds the `yt_dlp_host` module for the platform.
-export async function createEngine({ py, wheel, createHost }) {
+// `cookies` is the text of a cookies.txt file that every call uses by default.
+export async function createEngine({ py, wheel, createHost, cookies }) {
   await installDependencies(py);
   await py.pyimport('micropip').install(wheel);
+
+  const hasCookies = Boolean(cookies);
+  if (hasCookies) {
+    py.FS.mkdirTree(COOKIES_PATH.slice(0, COOKIES_PATH.lastIndexOf('/')));
+    py.FS.writeFile(COOKIES_PATH, cookies);
+  }
 
   let sink = () => {};
   py.registerJsModule('yt_dlp_host', createHost({ FS: py.FS }));
@@ -36,7 +44,7 @@ import yt_dlp_wasm_api
     const result = queue.then(async () => {
       sink = onEvent;
       try {
-        py.globals.set('_api_request', JSON.stringify(request));
+        py.globals.set('_api_request', JSON.stringify(hasCookies ? { ...request, cookies: COOKIES_PATH } : request));
         const reply = JSON.parse(await py.runPythonAsync('yt_dlp_wasm_api.call(_api_request)'));
         if (reply.error) throw new YtDlpError(reply.error.message, reply.error);
         return reply.result;
