@@ -183,7 +183,7 @@ jobs:
         persist-credentials: false
     - name: Install
       timeout-minutes: 10
-      run: sudo packages/cors-proxy/pi/setup.sh
+      run: sudo packages/cors-proxy/setup.sh
     - name: Check the service
       run: |
         systemctl is-active --quiet yt-dlp-wasm-proxy
@@ -203,13 +203,13 @@ jobs:
     - name: Run the installer again
       run: |
         before=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
-        sudo packages/cors-proxy/pi/setup.sh
+        sudo packages/cors-proxy/setup.sh
         after=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
         test "$before" = "$after"
         systemctl is-active --quiet yt-dlp-wasm-proxy
     - name: Uninstall
       run: |
-        sudo packages/cors-proxy/pi/setup.sh --uninstall
+        sudo packages/cors-proxy/setup.sh --uninstall
         test -z "$(systemctl list-unit-files yt-dlp-wasm-proxy.service --no-legend)"
         test "$(systemctl is-active yt-dlp-wasm-proxy || true)" != active
         test ! -e /opt/yt-dlp-wasm-proxy
