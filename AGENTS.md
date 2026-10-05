@@ -102,7 +102,9 @@ for a normal release.
    does nothing. A new sync PR closes older open sync PRs.
 3. On a conflict, fork-owned files keep ours: README.md, CONTRIBUTING.md,
    Maintainers.md, LICENSE, LICENSE.upstream, CONTRIBUTORS, the issue
-   templates and the PR template. pyproject.toml takes upstream's side of the
+   templates, the PR template, and the upstream workflows the fork deleted,
+   which stay deleted. The list is `fork_owned` in
+   `.github/sync/merge-upstream.sh`. pyproject.toml takes upstream's side of the
    conflict, and `.github/sync/fork-pyproject.py` applies the fork's license,
    sdist and `[project.urls]` edits again. Any other conflict pushes nothing.
    The run opens or updates the issue "Upstream yt-dlp <tag> needs a manual

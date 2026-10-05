@@ -15,9 +15,14 @@ notes_file="${NOTES_FILE:-notes.txt}"
 : >"$conflicts_file"
 : >"$notes_file"
 
+# Includes upstream files the fork deleted, so they stay deleted
 fork_owned=(
   README.md CONTRIBUTING.md Maintainers.md LICENSE LICENSE.upstream CONTRIBUTORS
   '.github/ISSUE_TEMPLATE*/**' .github/PULL_REQUEST_TEMPLATE.md
+  .github/workflows/build.yml .github/workflows/release.yml
+  .github/workflows/release-master.yml .github/workflows/release-nightly.yml
+  .github/workflows/wiki.yml .github/workflows/issue-lockdown.yml
+  .github/workflows/sanitize-comment.yml .github/workflows/label-handler.yml
 )
 
 is_fork_owned() {
