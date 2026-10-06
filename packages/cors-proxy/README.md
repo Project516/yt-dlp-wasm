@@ -75,8 +75,8 @@ confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
 proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
 on Node.js 18 or newer, and `setup.sh` installs it as a systemd service. You
 need a machine that is always online, runs Linux with systemd (Debian or
-Ubuntu based) on armhf, arm64 or amd64, and has about 512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
-your router.
+Ubuntu based) on armhf, arm64 or amd64, and has about 512 MB of RAM.
+Cloudflare Tunnel publishes the proxy, so you open no port on your router.
 
 1. In the Cloudflare dashboard, go to Zero Trust, Networks, Tunnels and create
    a tunnel. Choose the Cloudflared connector and copy the token.

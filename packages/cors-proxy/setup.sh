@@ -183,7 +183,7 @@ fetch_files() {
   for file in worker.js node.mjs setup.sh; do
     case $base in
       /*) cp "$base/$file" "$tmp_dir/new/$file" ;;
-      *) curl -fsSL --retry 3 --max-time 120 "$base/$file" -o "$tmp_dir/new/$file" ;;
+      *) curl -fsSL --retry 3 --max-time 60 "$base/$file" -o "$tmp_dir/new/$file" ;;
     esac
   done
   # worker.js is an ES module, and Node 18 needs this to load it
@@ -206,6 +206,8 @@ install_files() {
   files_changed=false
   for file in worker.js node.mjs; do
     cmp -s "$tmp_dir/new/$file" "$APP_DIR/$file" 2>/dev/null || files_changed=true
+  done
+  for file in worker.js node.mjs setup.sh; do
     cp -p "$APP_DIR/$file" "$tmp_dir/old/$file" 2>/dev/null || true
   done
   put_file worker.js 644
@@ -216,7 +218,7 @@ install_files() {
 
 restore_files() {
   local file
-  for file in worker.js node.mjs; do
+  for file in worker.js node.mjs setup.sh; do
     [ ! -f "$tmp_dir/old/$file" ] || cp -p "$tmp_dir/old/$file" "$APP_DIR/$file"
   done
 }
@@ -284,7 +286,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=$APP_DIR/setup.sh --update
-TimeoutStartSec=300
+TimeoutStartSec=15min
 PrivateTmp=yes
 UNIT
     cat >"$UPDATE_TIMER_FILE" <<UNIT

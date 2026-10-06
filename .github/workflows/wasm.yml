@@ -238,6 +238,15 @@ jobs:
         if sudo env YTDLP_PROXY_SOURCE="$broken" /opt/yt-dlp-wasm-proxy/setup.sh --update; then exit 1; fi
         sudo cmp packages/cors-proxy/worker.js /opt/yt-dlp-wasm-proxy/worker.js
         systemctl is-active --quiet yt-dlp-wasm-proxy
+    - name: Roll back an update that does not start
+      run: |
+        failing=$(mktemp -d)
+        cp packages/cors-proxy/{worker.js,node.mjs,setup.sh} "$failing"
+        echo "throw new Error('fails at startup');" >>"$failing/worker.js"
+        if sudo env YTDLP_PROXY_SOURCE="$failing" /opt/yt-dlp-wasm-proxy/setup.sh --update; then exit 1; fi
+        sudo cmp packages/cors-proxy/worker.js /opt/yt-dlp-wasm-proxy/worker.js
+        for _ in $(seq 1 30); do curl -s -o /dev/null http://127.0.0.1:8787/ && break; sleep 1; done
+        curl -s -o /dev/null http://127.0.0.1:8787/
     - name: Run the update service
       run: |
         sudo systemctl start yt-dlp-wasm-proxy-update.service
