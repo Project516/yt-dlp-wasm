@@ -21,7 +21,7 @@ The demo at <https://yt-dlp-wasm.project516.dev> runs yt-dlp in your browser and
 
 ## Use it as a library
 
-`@project516/yt-dlp-wasm` wraps yt-dlp on Pyodide in a small JavaScript API for browsers and Node.js.
+[`@project516/yt-dlp-wasm`](https://www.npmjs.com/package/@project516/yt-dlp-wasm) on npm wraps yt-dlp on Pyodide in a small JavaScript API for browsers and Node.js.
 
 ```sh
 pnpm add @project516/yt-dlp-wasm
