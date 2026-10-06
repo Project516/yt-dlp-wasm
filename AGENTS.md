@@ -48,7 +48,10 @@ Five suites must pass on every PR:
 - The proxy tests in `packages/cors-proxy`. `npm test` runs the `node:test`
   suite, and CI runs it on Node 18 and 26 as `Proxy tests (Node.js)`. The job
   `Proxy setup (Linux arm64)` runs `setup.sh` on an arm64 runner. It checks
-  a request, a refused private target, a second run and `--uninstall`.
+  a request, a refused private target, the update timer, a second run,
+  `--update` (including a broken download that must change nothing),
+  `--no-auto-update` and `--uninstall`. The job points `--update` at the
+  checkout with `YTDLP_PROXY_SOURCE`.
 - The demo's tests in `apps/demo`. `pnpm test` runs the unit tests with
   `node:test`. For the smoke test, build the wheel and the demo, then run
   `pnpm test:browser` there. Only CI runs the smoke test.
@@ -180,7 +183,17 @@ Sonnet subagent reviews instead.
   Node's http server. `setup.sh` installs it as a systemd service, usually
   behind a Cloudflare Tunnel, so requests leave from a residential IP. It
   refuses private targets unless `ALLOW_PRIVATE_TARGETS=true`. The test
-  harness uses it for its in-process proxies.
+  harness uses it for its in-process proxies. A daily systemd timer runs the
+  installed `setup.sh --update`, which downloads the proxy files and the script
+  from the ref saved in `/etc/yt-dlp-wasm-proxy/env`, validates them, swaps them
+  in and restarts the service if they changed. `--no-auto-update` turns the
+  timer off.
+- **Personal Worker**: the `personal` environment in
+  `packages/cors-proxy/wrangler.toml`. `cors-proxy.yml` deploys it on pushes to
+  master from a temporary config built from the repo secrets
+  `PERSONAL_PROXY_HOST` (a custom domain, never written to the repo) and
+  `PERSONAL_PROXY_ORIGINS`. It skips when either is unset, keeps workers.dev
+  off, and leaves the `ACCESS_KEY` Worker secret alone.
 - **Library**: `@project516/yt-dlp-wasm`. Its `createYtDlp(options)` returns an
   object with `run`, `extractInfo`, `download`, `close` and `terminate`. It
   uses `src/node.mjs` in Node.js and `src/browser.mjs` in browsers.

@@ -40,6 +40,21 @@ directly.
 
 The `personal` environment refuses every request until `ACCESS_KEY` is set.
 
+### Deploy from CI
+
+In a fork, the workflow `.github/workflows/cors-proxy.yml` also deploys your
+Worker on every push to `master` that changes `packages/cors-proxy`. Add two
+repository secrets, next to `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`:
+
+- `PERSONAL_PROXY_HOST`: the custom domain for the Worker, for example
+  `proxy.example.com`. The zone must be on your Cloudflare account.
+- `PERSONAL_PROXY_ORIGINS`: the `ALLOWED_ORIGINS` value, a comma-separated list.
+
+The job writes a temporary config from them, so the hostname never enters the
+repository. It turns workers.dev off, sets `REQUIRE_ACCESS_KEY`, and leaves the
+`ACCESS_KEY` secret alone. Set that secret once with step 5 above. Without the
+two secrets, the job skips itself.
+
 ## Use it
 
 yt-dlp-wasm reads two environment variables inside Pyodide:
@@ -60,8 +75,7 @@ confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
 proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
 on Node.js 18 or newer, and `setup.sh` installs it as a systemd service. You
 need a machine that is always online, runs Linux with systemd (Debian or
-Ubuntu based, Raspberry Pi OS included) on armhf, arm64 or amd64, and has about
-512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
+Ubuntu based) on armhf, arm64 or amd64, and has about 512 MB of RAM. Cloudflare Tunnel publishes the proxy, so you open no port on
 your router.
 
 1. In the Cloudflare dashboard, go to Zero Trust, Networks, Tunnels and create
@@ -80,9 +94,28 @@ your router.
 
 The script also takes `--origins LIST` (default
 `https://yt-dlp-wasm.project516.dev`), `--port N` (default 8787), `--ref REF`
-(the git ref to download from) and `--uninstall`. Running it again keeps the
-access key and the settings you do not override. The key and settings are in
-`/etc/yt-dlp-wasm-proxy/env`, readable by root only.
+(the git ref to download from, default `master`) and `--uninstall`. Running it
+again keeps the access key and the settings you do not override. The key and
+settings, including the ref, are in `/etc/yt-dlp-wasm-proxy/env`, readable by
+root only.
+
+### Updates
+
+The installer adds a systemd timer, `yt-dlp-wasm-proxy-update.timer`. Once a
+day, at a random time within a few hours, it runs `setup.sh --update`. That
+downloads `worker.js`, `node.mjs` and `setup.sh` from the saved ref into a temp
+directory, checks them with `node --check` and `bash -n`, and only then
+replaces the installed copies in `/opt/yt-dlp-wasm-proxy`. It restarts the
+service when the proxy files changed, and puts the old files back if the new
+ones do not start. A failed check or download changes nothing. The update keeps
+your config and does not touch the tunnel.
+
+- `sudo /opt/yt-dlp-wasm-proxy/setup.sh --update` updates now.
+- `--no-auto-update` skips the timer, or removes it on a re-run. The choice is
+  saved, so later re-runs keep it off until you pass `--auto-update`.
+- A change to the systemd units reaches a machine only when you run the
+  installer again.
+- `journalctl -u yt-dlp-wasm-proxy-update` shows the last update.
 
 A proxy at home can reach your home network, so `node.mjs` refuses targets that
 resolve to loopback, private, link-local or other internal addresses, with a

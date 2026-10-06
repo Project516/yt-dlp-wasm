@@ -200,6 +200,15 @@ jobs:
         test "$code" = 403
         code=$(curl -sS -o /dev/null -w '%{http_code}' -H "Origin: $origin" "$proxy?url=https://example.com/")
         test "$code" = 403
+    - name: Check the update timer
+      run: |
+        test "$(systemctl is-enabled yt-dlp-wasm-proxy-update.timer)" = enabled
+        systemctl is-active --quiet yt-dlp-wasm-proxy-update.timer
+        grep -x 'Persistent=true' /etc/systemd/system/yt-dlp-wasm-proxy-update.timer
+        grep -x 'RandomizedDelaySec=3h' /etc/systemd/system/yt-dlp-wasm-proxy-update.timer
+        sudo grep -x 'SETUP_AUTO_UPDATE=true' /etc/yt-dlp-wasm-proxy/env
+        sudo grep -x 'SETUP_REF=master' /etc/yt-dlp-wasm-proxy/env
+        test -x /opt/yt-dlp-wasm-proxy/setup.sh
     - name: Run the installer again
       run: |
         before=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
@@ -207,10 +216,50 @@ jobs:
         after=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
         test "$before" = "$after"
         systemctl is-active --quiet yt-dlp-wasm-proxy
+        systemctl is-enabled --quiet yt-dlp-wasm-proxy-update.timer
+    - name: Update
+      run: |
+        src=$PWD/packages/cors-proxy
+        installed=/opt/yt-dlp-wasm-proxy
+        before=$(sudo cat /etc/yt-dlp-wasm-proxy/env)
+        sudo env YTDLP_PROXY_SOURCE="$src" $installed/setup.sh --update | grep 'up to date'
+        echo '// stale' | sudo tee -a $installed/worker.js >/dev/null
+        sudo env YTDLP_PROXY_SOURCE="$src" $installed/setup.sh --update | grep '^Updated'
+        sudo cmp "$src/worker.js" $installed/worker.js
+        sudo cmp "$src/setup.sh" $installed/setup.sh
+        test "$before" = "$(sudo cat /etc/yt-dlp-wasm-proxy/env)"
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+        if sudo $installed/setup.sh --update --port 9000; then exit 1; fi
+    - name: Refuse a broken update
+      run: |
+        broken=$(mktemp -d)
+        cp packages/cors-proxy/{worker.js,node.mjs,setup.sh} "$broken"
+        echo 'syntax error (' >>"$broken/worker.js"
+        if sudo env YTDLP_PROXY_SOURCE="$broken" /opt/yt-dlp-wasm-proxy/setup.sh --update; then exit 1; fi
+        sudo cmp packages/cors-proxy/worker.js /opt/yt-dlp-wasm-proxy/worker.js
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+    - name: Run the update service
+      run: |
+        sudo systemctl start yt-dlp-wasm-proxy-update.service
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+    - name: Turn off auto-update
+      run: |
+        sudo packages/cors-proxy/setup.sh --no-auto-update
+        test -z "$(systemctl list-unit-files yt-dlp-wasm-proxy-update.timer --no-legend)"
+        test ! -e /etc/systemd/system/yt-dlp-wasm-proxy-update.service
+        sudo grep -x 'SETUP_AUTO_UPDATE=false' /etc/yt-dlp-wasm-proxy/env
+        systemctl is-active --quiet yt-dlp-wasm-proxy
+        sudo packages/cors-proxy/setup.sh
+        test ! -e /etc/systemd/system/yt-dlp-wasm-proxy-update.timer
+        sudo packages/cors-proxy/setup.sh --auto-update
+        systemctl is-enabled --quiet yt-dlp-wasm-proxy-update.timer
     - name: Uninstall
       run: |
         sudo packages/cors-proxy/setup.sh --uninstall
         test -z "$(systemctl list-unit-files yt-dlp-wasm-proxy.service --no-legend)"
+        test -z "$(systemctl list-unit-files yt-dlp-wasm-proxy-update.timer --no-legend)"
+        test ! -e /etc/systemd/system/yt-dlp-wasm-proxy-update.service
+        test ! -e /etc/systemd/system/yt-dlp-wasm-proxy-update.timer
         test "$(systemctl is-active yt-dlp-wasm-proxy || true)" != active
         test ! -e /opt/yt-dlp-wasm-proxy
         test ! -e /etc/yt-dlp-wasm-proxy
