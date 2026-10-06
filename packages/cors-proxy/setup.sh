@@ -8,14 +8,20 @@ APP_DIR=/opt/$SERVICE
 CONFIG_DIR=/etc/$SERVICE
 ENV_FILE=$CONFIG_DIR/env
 UNIT_FILE=/etc/systemd/system/$SERVICE.service
+UPDATE_UNIT_FILE=/etc/systemd/system/$SERVICE-update.service
+UPDATE_TIMER_FILE=/etc/systemd/system/$SERVICE-update.timer
 RAW_URL=https://raw.githubusercontent.com/Project516/yt-dlp-wasm
 DEFAULT_ORIGINS=https://yt-dlp-wasm.project516.dev
 
 tunnel_token=
 origins=
 port=
-ref=master
+ref=
+auto_update=
 uninstall=false
+update=false
+tmp_dir=
+files_changed=false
 access_key=
 node_bin=
 apt_updated=false
@@ -32,6 +38,10 @@ Usage: setup.sh [options]
   --origins LIST        comma-separated allowed origins (default $DEFAULT_ORIGINS)
   --port N              local port (default 8787)
   --ref REF             git ref to download the proxy files from (default master)
+  --update              download the latest proxy files from the saved ref and restart
+                        the service if they changed. Takes no other option.
+  --auto-update         check for updates daily (default)
+  --no-auto-update      do not check for updates, and remove the daily check
   --uninstall           remove the proxy service, its files and its config
 USAGE
 }
@@ -51,6 +61,18 @@ parse_args() {
         ;;
       --uninstall)
         uninstall=true
+        shift
+        ;;
+      --update)
+        update=true
+        shift
+        ;;
+      --auto-update)
+        auto_update=true
+        shift
+        ;;
+      --no-auto-update)
+        auto_update=false
         shift
         ;;
       -h | --help)
@@ -75,9 +97,13 @@ load_settings() {
     access_key=$(existing_setting ACCESS_KEY)
     [ -n "$origins" ] || origins=$(existing_setting ALLOWED_ORIGINS)
     [ -n "$port" ] || port=$(existing_setting PORT)
+    [ -n "$ref" ] || ref=$(existing_setting SETUP_REF)
+    [ -n "$auto_update" ] || auto_update=$(existing_setting SETUP_AUTO_UPDATE)
   fi
   origins=${origins:-$DEFAULT_ORIGINS}
   port=${port:-8787}
+  ref=${ref:-master}
+  [ "$auto_update" = false ] || auto_update=true
 
   case $port in
     '' | *[!0-9]*) die "--port must be a number" ;;
@@ -86,14 +112,18 @@ load_settings() {
   case $origins in
     *[[:space:]\"\'\\]*) die "--origins must be a comma-separated list without spaces or quotes" ;;
   esac
+  case $ref in
+    *[!A-Za-z0-9._/-]*) die "--ref may only contain letters, digits and . _ / -" ;;
+  esac
   case $tunnel_token in
     *[[:space:]]*) die "--tunnel-token must not contain spaces" ;;
   esac
 }
 
 remove_service() {
+  systemctl disable --now "$SERVICE-update.timer" 2>/dev/null || true
   systemctl disable --now "$SERVICE" 2>/dev/null || true
-  rm -f "$UNIT_FILE"
+  rm -f "$UNIT_FILE" "$UPDATE_UNIT_FILE" "$UPDATE_TIMER_FILE"
   systemctl daemon-reload
   rm -rf "$APP_DIR" "$CONFIG_DIR"
   echo "Removed $SERVICE."
@@ -127,24 +157,70 @@ install_node() {
   esac
 }
 
-install_files() {
-  local script_dir=
-  install -d -m 755 "$APP_DIR"
-  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# Where the proxy files come from: a directory or URL. A checkout installs
+# itself. YTDLP_PROXY_SOURCE overrides this, which the CI job uses.
+source_base() {
+  local dir
+  if [ -n "${YTDLP_PROXY_SOURCE:-}" ]; then
+    echo "$YTDLP_PROXY_SOURCE"
+    return
   fi
-  if [ -n "$script_dir" ] && [ -f "$script_dir/worker.js" ] && [ -f "$script_dir/node.mjs" ]; then
-    install -m 644 "$script_dir/worker.js" "$script_dir/node.mjs" "$APP_DIR/"
-  else
-    local file
-    for file in worker.js node.mjs; do
-      curl -fsSL "$RAW_URL/$ref/packages/cors-proxy/$file" -o "$APP_DIR/$file.tmp"
-      chmod 644 "$APP_DIR/$file.tmp"
-      mv "$APP_DIR/$file.tmp" "$APP_DIR/$file"
-    done
+  if [ "$update" = false ] && [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+    dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    if [ "$dir" != "$APP_DIR" ] && [ -f "$dir/worker.js" ] && [ -f "$dir/node.mjs" ] && [ -f "$dir/setup.sh" ]; then
+      echo "$dir"
+      return
+    fi
   fi
+  echo "$RAW_URL/$ref/packages/cors-proxy"
+}
+
+# Downloads into a temp dir and checks the files before anything is replaced
+fetch_files() {
+  local base file
+  base=$(source_base)
+  install -d "$tmp_dir/new" "$tmp_dir/old"
+  for file in worker.js node.mjs setup.sh; do
+    case $base in
+      /*) cp "$base/$file" "$tmp_dir/new/$file" ;;
+      *) curl -fsSL --retry 3 --max-time 60 "$base/$file" -o "$tmp_dir/new/$file" ;;
+    esac
+  done
   # worker.js is an ES module, and Node 18 needs this to load it
-  echo '{"type":"module"}' >"$APP_DIR/package.json"
+  echo '{"type":"module"}' >"$tmp_dir/new/package.json"
+  for file in worker.js node.mjs; do
+    node --check "$tmp_dir/new/$file" || die "the downloaded $file is not valid JavaScript, nothing was changed"
+  done
+  bash -n "$tmp_dir/new/setup.sh" || die "the downloaded setup.sh is not valid, nothing was changed"
+}
+
+put_file() {
+  install -m "$2" "$tmp_dir/new/$1" "$APP_DIR/$1.new"
+  mv "$APP_DIR/$1.new" "$APP_DIR/$1"
+}
+
+install_files() {
+  local file
+  fetch_files
+  install -d -m 755 "$APP_DIR"
+  files_changed=false
+  for file in worker.js node.mjs; do
+    cmp -s "$tmp_dir/new/$file" "$APP_DIR/$file" 2>/dev/null || files_changed=true
+  done
+  for file in worker.js node.mjs setup.sh; do
+    cp -p "$APP_DIR/$file" "$tmp_dir/old/$file" 2>/dev/null || true
+  done
+  put_file worker.js 644
+  put_file node.mjs 644
+  put_file package.json 644
+  put_file setup.sh 755
+}
+
+restore_files() {
+  local file
+  for file in worker.js node.mjs setup.sh; do
+    [ ! -f "$tmp_dir/old/$file" ] || cp -p "$tmp_dir/old/$file" "$APP_DIR/$file"
+  done
 }
 
 write_config() {
@@ -160,13 +236,15 @@ ACCESS_KEY=$access_key
 REQUIRE_ACCESS_KEY=true
 HOST=127.0.0.1
 PORT=$port
+SETUP_REF=$ref
+SETUP_AUTO_UPDATE=$auto_update
 CONFIG
   )
   chown root:root "$ENV_FILE.tmp"
   mv "$ENV_FILE.tmp" "$ENV_FILE"
 }
 
-# The heap cap and MemoryMax suit a 512 MB board. Bodies stream through.
+# The heap cap and MemoryMax suit a device with 512 MB of RAM. Bodies stream through.
 write_unit() {
   cat >"$UNIT_FILE" <<UNIT
 [Unit]
@@ -197,19 +275,80 @@ WantedBy=multi-user.target
 UNIT
 }
 
-start_service() {
+write_update_timer() {
+  if [ "$auto_update" = true ]; then
+    cat >"$UPDATE_UNIT_FILE" <<UNIT
+[Unit]
+Description=Update the yt-dlp-wasm CORS proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=$APP_DIR/setup.sh --update
+TimeoutStartSec=15min
+PrivateTmp=yes
+UNIT
+    cat >"$UPDATE_TIMER_FILE" <<UNIT
+[Unit]
+Description=Update the yt-dlp-wasm CORS proxy daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=3h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+    systemctl daemon-reload
+    systemctl enable --now "$SERVICE-update.timer"
+  else
+    systemctl disable --now "$SERVICE-update.timer" 2>/dev/null || true
+    rm -f "$UPDATE_UNIT_FILE" "$UPDATE_TIMER_FILE"
+    systemctl daemon-reload
+  fi
+}
+
+wait_for_proxy() {
   local _
-  systemctl daemon-reload
-  systemctl enable "$SERVICE"
-  systemctl restart "$SERVICE"
   for _ in $(seq 1 30); do
     if curl -s -o /dev/null "http://127.0.0.1:$port/"; then
       return 0
     fi
     sleep 1
   done
-  journalctl -u "$SERVICE" --no-pager -n 20 >&2 || true
-  die "the proxy did not start on port $port"
+  return 1
+}
+
+start_service() {
+  systemctl daemon-reload
+  systemctl enable "$SERVICE"
+  systemctl restart "$SERVICE"
+  if ! wait_for_proxy; then
+    journalctl -u "$SERVICE" --no-pager -n 20 >&2 || true
+    die "the proxy did not start on port $port"
+  fi
+}
+
+update_proxy() {
+  { [ -f "$ENV_FILE" ] && [ -f "$UNIT_FILE" ]; } || die "$SERVICE is not installed. Run the installer first."
+  { [ -z "$tunnel_token" ] && [ -z "$origins" ] && [ -z "$port" ] && [ -z "$ref" ] && [ -z "$auto_update" ]; } ||
+    die "--update takes no other option. Run the installer again to change settings."
+  load_settings
+  [ "$(node_major)" -ge 18 ] || die "Node.js 18 or newer is required"
+  install_files
+  if [ "$files_changed" = false ]; then
+    echo "$SERVICE is up to date."
+    return
+  fi
+  systemctl restart "$SERVICE"
+  if ! wait_for_proxy; then
+    restore_files
+    systemctl restart "$SERVICE" || true
+    die "the updated proxy did not start on port $port, the previous files are back"
+  fi
+  echo "Updated $SERVICE from $ref."
 }
 
 install_tunnel() {
@@ -227,12 +366,15 @@ install_tunnel() {
 }
 
 print_summary() {
+  local update_note="daily, from ref $ref. Run '$APP_DIR/setup.sh --update' to update now."
+  [ "$auto_update" = true ] || update_note="off. Run '$APP_DIR/setup.sh --update' to update."
   cat <<DONE
 
 The proxy is running as the $SERVICE service.
 Local URL:  http://127.0.0.1:$port/
 Access key: $access_key
 Origins:    $origins
+Updates:    $update_note
 
 In the demo, open Proxy settings, pick Custom proxy, and set:
   Proxy URL:  the public hostname of your tunnel, such as https://proxy.example.com/
@@ -243,20 +385,31 @@ DONE
   fi
 }
 
+cleanup() {
+  [ -z "$tmp_dir" ] || rm -rf "$tmp_dir"
+}
+
 main() {
   parse_args "$@"
   [ "$(id -u)" -eq 0 ] || die "run as root, for example with sudo"
+  tmp_dir=$(mktemp -d)
+  trap cleanup EXIT
   if [ "$uninstall" = true ]; then
     remove_service
     return
   fi
-  command -v apt-get >/dev/null 2>&1 || die "this script needs apt, so Debian, Raspberry Pi OS or Ubuntu"
   [ -d /run/systemd/system ] || die "systemd is not running"
+  if [ "$update" = true ]; then
+    update_proxy
+    return
+  fi
+  command -v apt-get >/dev/null 2>&1 || die "this script needs apt, so Debian, Ubuntu or a system based on them"
   load_settings
   install_node
   install_files
   write_config
   write_unit
+  write_update_timer
   start_service
   if [ -n "$tunnel_token" ]; then
     install_tunnel
