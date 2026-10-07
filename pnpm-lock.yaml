@@ -188,8 +188,8 @@ importers:
   packages/yt-dlp-wasm:
     dependencies:
       '@project516/ffmpeg-wasm-core':
-        specifier: 0.16.0
-        version: 0.16.0
+        specifier: 0.17.0
+        version: 0.17.0
       pyodide:
         specifier: 314.0.7
         version: 314.0.7
@@ -595,8 +595,8 @@ packages:
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
 
-  '@project516/ffmpeg-wasm-core@0.16.0':
-    resolution: {integrity: sha512-R8UPZbUcJaNHuVnvUXkjEoT78XtdXZD05YGxRxHV5vi5yIDmW5zib/PgumUQ5/UfBqIzQkkw1kZzG73qax+vBw==}
+  '@project516/ffmpeg-wasm-core@0.17.0':
+    resolution: {integrity: sha512-ibCEsgC497gTI70XBkKp73aW7/955EUPjUbOpGB86caJ5ze0MLq5bmPiIIiZXtey6o+8hVHDis+xn4VkIxfQjA==}
     engines: {node: '>=20'}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
@@ -1233,7 +1233,7 @@ snapshots:
 
   '@poppinss/exception@1.2.3': {}
 
-  '@project516/ffmpeg-wasm-core@0.16.0': {}
+  '@project516/ffmpeg-wasm-core@0.17.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     optional: true
