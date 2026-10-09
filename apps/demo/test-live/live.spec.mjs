@@ -6,6 +6,7 @@ const SITE = process.env.DEMO_URL || 'https://yt-dlp-wasm.project516.dev';
 const RESULTS = path.resolve(import.meta.dirname, '../live-results');
 const PROXY = 'https://yt-dlp-demo-proxy.project516.dev';
 const DOWNLOAD_TIMEOUT = 240_000;
+const PAGE_TIMEOUT = 60_000;
 
 // An 8 second public-domain clip, under 1 MB
 const ARCHIVE_URL = 'https://archive.org/details/wonder_bread';
@@ -14,6 +15,7 @@ const YOUTUBE_URL = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
 // Starts a download on the live page and returns the saved file's name and size
 async function download(page, url, kind) {
   await page.goto(SITE);
+  await page.getByLabel('Link').waitFor({ timeout: PAGE_TIMEOUT });
   if (kind === 'audio') {
     await page.getByRole('radio', { name: 'Audio' }).check();
     await page.getByLabel('Audio format').selectOption('mp3');
@@ -40,8 +42,13 @@ async function download(page, url, kind) {
   };
 }
 
-// Cloudflare Bot Fight Mode challenges datacenter IPs such as GitHub Actions. The
-// challenge page has no CORS headers, so the demo only sees a network error
+// Cloudflare Bot Fight Mode challenges datacenter IPs such as GitHub Actions, on the
+// demo itself or on the proxy
+async function siteChallenged(page) {
+  return page.getByRole('heading', { name: 'Performing security verification' }).isVisible().catch(() => false);
+}
+
+// The proxy's challenge page has no CORS headers, so the demo only sees a network error
 async function proxyChallenged(page) {
   try {
     const response = await page.request.get(`${PROXY}/?url=${encodeURIComponent('https://example.com/')}`, {
@@ -66,7 +73,7 @@ async function runCase(page, name, { blocking }, body) {
     status = 'fail';
     error = caught;
     detail = String(caught.message).split('\n')[0].slice(0, 400);
-    if (await proxyChallenged(page)) {
+    if ((await siteChallenged(page)) || (await proxyChallenged(page))) {
       status = 'blocked';
       detail = 'Blocked by Cloudflare Bot Fight Mode (expected from CI)';
       error = undefined;
