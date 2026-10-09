@@ -135,7 +135,6 @@ yt_dlp_ejs/
 
 # wasm monorepo
 node_modules/
-live-results/
 test-results/
 
 # Tiny media files for the library and demo tests
