@@ -4,6 +4,7 @@ import functools
 import http.client
 import io
 import ssl
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -340,7 +341,7 @@ def handle_response_read_exceptions(e):
 
 @register_rh
 class UrllibRH(RequestHandler, InstanceStoreMixin):
-    _SUPPORTED_URL_SCHEMES = ('http', 'https', 'data', 'ftp')
+    _SUPPORTED_URL_SCHEMES = ('data',) if sys.platform == 'emscripten' else ('http', 'https', 'data', 'ftp')
     _SUPPORTED_PROXY_SCHEMES = ('http', 'socks4', 'socks4a', 'socks5', 'socks5h')
     _SUPPORTED_FEATURES = (Features.NO_PROXY, Features.ALL_PROXY)
     RH_NAME = 'urllib'

@@ -1,0 +1,236 @@
+name: Site parity
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: Shards per runtime
+        default: '20'
+        required: true
+      timeout_seconds:
+        description: Timeout of each test case in seconds
+        default: '300'
+        required: true
+      filter:
+        description: Only run cases matching this pytest -k expression
+        default: ''
+      limit:
+        description: Only run the first N cases, 0 for all
+        default: '0'
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: site-parity
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: List the cases
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+      shard-count: ${{ steps.plan.outputs.shard-count }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install test requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/test.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/default.txt
+    - name: List and shard the cases
+      id: plan
+      env:
+        SHARDS: ${{ inputs.shards }}
+        FILTER: ${{ inputs.filter }}
+        LIMIT: ${{ inputs.limit }}
+      run: |
+        set -euo pipefail
+        for value in "${SHARDS}" "${LIMIT}"; do
+          [[ "${value}" =~ ^[0-9]+$ ]] || { echo "::error::Shards and limit must be whole numbers."; exit 1; }
+        done
+        args=(--collect-only -q -m download test/test_download.py)
+        if [ -n "${FILTER}" ]; then args+=(-k "${FILTER}"); fi
+        python -m pytest "${args[@]}" > collected.txt || { cat collected.txt; exit 1; }
+        # The *_all tests only rerun an extractor's other cases
+        { sed -n 's|^ *<TestCaseFunction \(.*\)>$|test/test_download.py::TestDownload::\1|p' collected.txt || true; } \
+          | { grep -v '_all$' || true; } \
+          | LC_ALL=C sort > ids.txt
+        if [ "${LIMIT}" -gt 0 ]; then
+          head -n "${LIMIT}" ids.txt > limited.txt || true
+          mv limited.txt ids.txt
+        fi
+        total="$(wc -l < ids.txt)"
+        if [ "${total}" -eq 0 ]; then
+          echo "::error::No test cases matched."
+          tail -n 20 collected.txt
+          exit 1
+        fi
+        count="$(( SHARDS < total ? SHARDS : total ))"
+        if [ "${count}" -eq 0 ]; then count=1; fi
+        echo "shards=$(jq -c -n --argjson n "${count}" '[range(0; $n)]')" >> "${GITHUB_OUTPUT}"
+        echo "shard-count=${count}" >> "${GITHUB_OUTPUT}"
+        echo "${total} cases in ${count} shards per runtime." >> "${GITHUB_STEP_SUMMARY}"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: parity-ids
+        path: ids.txt
+
+  native:
+    name: Native shard ${{ matrix.shard }}
+    needs: plan
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install ffmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends ffmpeg
+    - name: Install test requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/test.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/default.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/curl-cffi.txt
+        python -m pip install -U --require-hashes -r .github/parity/requirements.txt
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        name: parity-ids
+    - name: Run the shard
+      timeout-minutes: 170
+      env:
+        SHARD: ${{ matrix.shard }}
+        SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout_seconds }}
+      run: |
+        set -uo pipefail
+        junit="${GITHUB_WORKSPACE}/junit/native-${SHARD}.xml"
+        mapfile -t ids < <(awk -v n="${SHARD_COUNT}" -v i="${SHARD}" '(NR - 1) % n == i' ids.txt)
+        status=0
+        python -m devscripts.run_tests --flaky \
+          --pytest-args="--junitxml=${junit} --timeout=${TIMEOUT_SECONDS} -p no:cacheprovider" \
+          "${ids[@]}" || status=$?
+        # A failing case is data. Only a run that wrote no report fails the job
+        [ -f "${junit}" ] || exit "${status}"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      if: ${{ !cancelled() }}
+      with:
+        name: junit-native-${{ matrix.shard }}
+        path: junit/native-${{ matrix.shard }}.xml
+        if-no-files-found: warn
+
+  wasm:
+    name: Wasm shard ${{ matrix.shard }}
+    needs: plan
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+      with:
+        package_json_file: package.json
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: '26'
+        package-manager-cache: false
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: '3.14'
+    - name: Install test server requirements
+      run: |
+        python -m pip install -U --require-hashes -r bundle/requirements/pip.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/test.txt
+        python -m pip install -U --require-hashes -r bundle/requirements/default.txt
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile --filter @project516/yt-dlp-wasm...
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        name: parity-ids
+    - name: Run the shard
+      timeout-minutes: 170
+      working-directory: packages/yt-dlp-wasm
+      env:
+        SHARD: ${{ matrix.shard }}
+        SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
+        YTDLP_TEST_TIMEOUT: ${{ inputs.timeout_seconds }}
+      run: |
+        set -uo pipefail
+        junit="${GITHUB_WORKSPACE}/junit/wasm-${SHARD}.xml"
+        mapfile -t ids < <(awk -v n="${SHARD_COUNT}" -v i="${SHARD}" '(NR - 1) % n == i' "${GITHUB_WORKSPACE}/ids.txt")
+        # Pyodide sometimes dies while it starts, so a run without a report gets one more try
+        for _ in 1 2; do
+          status=0
+          node test-harness/run-tests.mjs --flaky \
+            --pytest-args="--junitxml=${junit} -p no:cacheprovider" \
+            "${ids[@]}" 2>&1 | cut -c1-1500 || status=$?
+          if [ -f "${junit}" ]; then break; fi
+        done
+        # A failing case is data. Only a run that wrote no report fails the job
+        [ -f "${junit}" ] || exit "${status}"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      if: ${{ !cancelled() }}
+      with:
+        name: junit-wasm-${{ matrix.shard }}
+        path: junit/wasm-${{ matrix.shard }}.xml
+        if-no-files-found: warn
+
+  report:
+    name: Merge the report
+    needs: [plan, native, wasm]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      with:
+        node-version: '26'
+        package-manager-cache: false
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        name: parity-ids
+    - name: Download the shard reports
+      continue-on-error: true
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+      with:
+        pattern: junit-*
+        path: junit
+        merge-multiple: true
+    - name: Merge the reports
+      run: node .github/parity/report.mjs ids.txt junit report >> "${GITHUB_STEP_SUMMARY}"
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: site-parity-report
+        path: report

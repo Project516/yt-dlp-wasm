@@ -10,9 +10,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import http.server
 import re
-import threading
 
 from test.helper import http_server_port, try_rm
+from test.wasm_helper import start_http_server
 from yt_dlp import YoutubeDL
 from yt_dlp.downloader.http import HttpFD
 from yt_dlp.utils._utils import _YDLLogger as FakeLogger
@@ -69,12 +69,8 @@ class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
 
 class TestHttpFD(unittest.TestCase):
     def setUp(self):
-        self.httpd = http.server.HTTPServer(
-            ('127.0.0.1', 0), HTTPTestRequestHandler)
+        self.httpd = start_http_server(HTTPTestRequestHandler)
         self.port = http_server_port(self.httpd)
-        self.server_thread = threading.Thread(target=self.httpd.serve_forever)
-        self.server_thread.daemon = True
-        self.server_thread.start()
 
     def download(self, params, ep):
         params['logger'] = FakeLogger()

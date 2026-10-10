@@ -837,7 +837,13 @@ class netrc_from_content(netrc.netrc):
             self._parse('-', stream, False)
 
 
-class Popen(subprocess.Popen):
+if sys.platform == 'emscripten':
+    from ._wasm import HostPopen as _PopenBase
+else:
+    _PopenBase = subprocess.Popen
+
+
+class Popen(_PopenBase):
     if sys.platform == 'win32':
         _startupinfo = subprocess.STARTUPINFO()
         _startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW

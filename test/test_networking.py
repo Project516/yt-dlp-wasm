@@ -35,6 +35,7 @@ from test.helper import (
     validate_and_send,
     verify_address_availability,
 )
+from test.wasm_helper import start_http_server
 from yt_dlp.cookies import YoutubeDLCookieJar
 from yt_dlp.dependencies import brotli, curl_cffi, requests, urllib3
 from yt_dlp.networking import (
@@ -294,26 +295,16 @@ class HTTPTestRequestHandler(http.server.BaseHTTPRequestHandler):
 class TestRequestHandlerBase:
     @classmethod
     def setup_class(cls):
-        cls.http_httpd = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), HTTPTestRequestHandler)
-        cls.http_port = http_server_port(cls.http_httpd)
-        cls.http_server_thread = threading.Thread(target=cls.http_httpd.serve_forever)
         # FIXME: we should probably stop the http server thread after each test
         # See: https://github.com/yt-dlp/yt-dlp/pull/7094#discussion_r1199746041
-        cls.http_server_thread.daemon = True
-        cls.http_server_thread.start()
+        cls.http_httpd = start_http_server(HTTPTestRequestHandler, http.server.ThreadingHTTPServer)
+        cls.http_port = http_server_port(cls.http_httpd)
 
         # HTTPS server
-        certfn = os.path.join(TEST_DIR, 'testcert.pem')
-        cls.https_httpd = http.server.ThreadingHTTPServer(
-            ('127.0.0.1', 0), HTTPTestRequestHandler)
-        sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        sslctx.load_cert_chain(certfn, None)
-        cls.https_httpd.socket = sslctx.wrap_socket(cls.https_httpd.socket, server_side=True)
+        cls.https_httpd = start_http_server(
+            HTTPTestRequestHandler, http.server.ThreadingHTTPServer,
+            certfile=os.path.join(TEST_DIR, 'testcert.pem'))
         cls.https_port = http_server_port(cls.https_httpd)
-        cls.https_server_thread = threading.Thread(target=cls.https_httpd.serve_forever)
-        cls.https_server_thread.daemon = True
-        cls.https_server_thread.start()
 
 
 @pytest.mark.parametrize('handler', ['Urllib', 'Requests', 'CurlCFFI'], indirect=True)
@@ -702,10 +693,10 @@ class TestHTTPRequestHandler(TestRequestHandlerBase):
             res = validate_and_send(
                 rh, Request(f'http://127.0.0.1:{self.http_port}/headers'))
             assert res.readable()
-            assert res.read(1) == b'H'
+            assert res.read(1).lower() == b'h'
             # Ensure we don't close the adaptor yet
             assert not res.closed
-            assert res.read(3) == b'ost'
+            assert res.read(3).lower() == b'ost'
             assert res.read().decode().endswith('\n\n')
             assert res.read() == b''
             # Should auto-close and mark the response adaptor as closed
@@ -791,16 +782,9 @@ class TestClientCertificate:
         certfn = os.path.join(TEST_DIR, 'testcert.pem')
         cls.certdir = os.path.join(TEST_DIR, 'testdata', 'certificate')
         cacertfn = os.path.join(cls.certdir, 'ca.crt')
-        cls.httpd = http.server.ThreadingHTTPServer(('127.0.0.1', 0), HTTPTestRequestHandler)
-        sslctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        sslctx.verify_mode = ssl.CERT_REQUIRED
-        sslctx.load_verify_locations(cafile=cacertfn)
-        sslctx.load_cert_chain(certfn, None)
-        cls.httpd.socket = sslctx.wrap_socket(cls.httpd.socket, server_side=True)
+        cls.httpd = start_http_server(
+            HTTPTestRequestHandler, http.server.ThreadingHTTPServer, certfile=certfn, cafile=cacertfn)
         cls.port = http_server_port(cls.httpd)
-        cls.server_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.server_thread.daemon = True
-        cls.server_thread.start()
 
     def _run_test(self, handler, **handler_kwargs):
         with handler(

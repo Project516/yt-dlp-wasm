@@ -1,0 +1,5 @@
+{
+  "name": "yt-dlp-wasm-monorepo",
+  "private": true,
+  "packageManager": "pnpm@12.8.1"
+}
