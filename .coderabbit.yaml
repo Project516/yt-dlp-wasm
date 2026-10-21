@@ -1,6 +1,8 @@
 # Keep the organization's settings for everything else.
 inheritance: true
 reviews:
+  # The ruleset takes any approval, so only project516-review-bot may approve.
+  request_changes_workflow: false
   auto_review:
     # A sync PR is upstream's code, which the fork does not change.
     ignore_title_keywords:
