@@ -24,7 +24,7 @@ This fork follows upstream's policy on piracy. It does not support sites that ma
 
 Open pull requests against `master` of [Project516/yt-dlp-wasm](https://github.com/Project516/yt-dlp-wasm). They are squash merged.
 
-A pull request needs the required checks to pass and one approval from project516-review-bot. Upstream syncs are the exception to squashing. A workflow opens them and merges them with a merge commit, so do not open one by hand.
+A pull request needs the required checks to pass and one approval from project516-review-bot. CodeRabbit also comments on pull requests, but its review does not approve or block them. Upstream syncs are the exception to squashing. A workflow opens them and merges them with a merge commit, so do not open one by hand.
 
 - Behave like upstream yt-dlp. A difference is acceptable only where the platform cannot do the thing, such as raw sockets, threads, subprocesses, or browser-forbidden headers.
 - Add new files instead of editing upstream ones. When an upstream file has to change, keep the edit small and gate it on `sys.platform == 'emscripten'`.

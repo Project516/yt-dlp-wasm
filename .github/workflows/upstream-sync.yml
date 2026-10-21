@@ -128,7 +128,7 @@ jobs:
         {
           echo "Merges yt-dlp [${TAG}](https://github.com/yt-dlp/yt-dlp/releases/tag/${TAG}) into master."
           echo
-          echo "Auto-merge is armed with the merge method. GitHub merges this pull request once the required checks pass and project516-review-bot approves the head commit. A library release follows the merge."
+          echo "Auto-merge is armed with the merge method. GitHub merges this pull request once the required checks pass and project516-review-bot approves the head commit. The bot reviews only the fork's own changes on top of the release, and CodeRabbit skips sync pull requests. A library release follows the merge."
           if [ -s "${NOTES_FILE}" ]; then
             echo
             echo "Resolved by the fork's conflict policy:"
