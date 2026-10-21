@@ -154,6 +154,10 @@ bumps. Close a Dependabot PR that touches those files, security PRs included.
 Only the npm packages get Dependabot PRs. `pyodide` majors and
 `@project516/ffmpeg-wasm-core` are bumped by hand with feature tests.
 
+project516-review-bot skips Dependabot PRs, but the ruleset still needs its
+approval. Read the release notes against how the repo uses each package, then
+comment `/review` as the owner. Merge once the bot approves and CI passes.
+
 ## Review
 
 project516-review-bot is the review gate. A green CI run is not enough, because
