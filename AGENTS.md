@@ -85,13 +85,13 @@ run single test files only, wrapped in the memguard script.
 - Upstream syncs land with a merge commit, not a squash. A squash would make
   every later sync conflict. See Sync and release.
 - master has the ruleset `master-merge-gate`. A PR needs one approval, and a
-  push dismisses approvals. The ruleset takes anyone's approval, so no reviewer
-  but project516-review-bot may approve. See Review. These checks must pass: Check workflows, Run
-  zizmor, Core test, Code check, Core tests (Pyodide), Library tests (Node.js),
-  Library tests (Chromium), Demo tests (Chromium), Proxy tests (Node.js) (18),
-  Proxy tests (Node.js) (26) and Proxy setup (Linux arm64). Admins can bypass
-  it for PRs only, so nothing can be pushed to master directly. When a required
-  check is renamed, update the ruleset.
+  push dismisses approvals. The ruleset takes anyone's approval, so only
+  project516-review-bot may approve. See Review. These checks must pass: Check
+  workflows, Run zizmor, Core test, Code check, Core tests (Pyodide), Library
+  tests (Node.js), Library tests (Chromium), Demo tests (Chromium), Proxy tests
+  (Node.js) (18), Proxy tests (Node.js) (26) and Proxy setup (Linux arm64).
+  Admins can bypass it for PRs only, so nothing can be pushed to master
+  directly. When a required check is renamed, update the ruleset.
 
 ## Sync and release
 
