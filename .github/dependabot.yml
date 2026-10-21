@@ -11,7 +11,7 @@ updates:
     ignore:
       - dependency-name: "*"
   - package-ecosystem: uv
-    directory: "/"
+    directories: ["/", "/bundle/requirements"]
     schedule:
       interval: weekly
     cooldown:
