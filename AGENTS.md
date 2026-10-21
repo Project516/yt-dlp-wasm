@@ -162,6 +162,10 @@ comments and does not approve, and you have shown every finding false, an admin
 can merge with `gh pr merge <n> --admin`. If the bot fails to review a head, a
 Sonnet subagent reviews instead.
 
+CodeRabbit also reviews PRs, but it is not the gate. `.coderabbit.yaml` makes
+it skip sync PRs, because their code is upstream's. A finding on upstream code
+gets a reply that says so, not a fix. That fix belongs in yt-dlp/yt-dlp.
+
 ## Glossary
 
 - **Pyodide**: CPython compiled to wasm with Emscripten. `sys.platform` is
