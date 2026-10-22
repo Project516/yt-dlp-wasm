@@ -46,7 +46,7 @@ Five suites must pass on every PR:
   with `node:test`. `pnpm test:browser` runs Playwright on headless Chromium,
   and only CI runs it.
 - The proxy tests in `packages/cors-proxy`. `npm test` runs the `node:test`
-  suite, and CI runs it on Node 18 and 26 as `Proxy tests (Node.js)`. The job
+  suite, and CI runs it on Node 24 and 26 as `Proxy tests (Node.js)`. The job
   `Proxy setup (Linux arm64)` runs `setup.sh` on an arm64 runner. It checks
   a request, a refused private target, the update timer, a second run,
   `--update` (including a broken download that must change nothing),

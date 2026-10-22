@@ -1,4 +1,4 @@
-// Runs worker.js on Node's http server. Needs Node 18 or newer.
+// Runs worker.js on Node's http server. Needs a patched, supported Node line, see setup.sh.
 import dns from 'node:dns/promises';
 import fs from 'node:fs';
 import http from 'node:http';

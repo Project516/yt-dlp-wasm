@@ -73,7 +73,7 @@ page private, or use a key you can rotate.
 YouTube often answers requests from Cloudflare Workers with "Sign in to
 confirm you're not a bot", because Workers fetch from shared datacenter IPs. A
 proxy at home uses your residential IP. `node.mjs` runs the same `worker.js`
-on Node.js 18 or newer, and `setup.sh` installs it as a systemd service. You
+on a patched, supported Node.js, and `setup.sh` installs it as a systemd service. You
 need a machine that is always online, runs Linux with systemd (Debian or
 Ubuntu based) on armhf, arm64 or amd64, and has about 512 MB of RAM.
 Cloudflare Tunnel publishes the proxy, so you open no port on your router.
@@ -92,6 +92,12 @@ Cloudflare Tunnel publishes the proxy, so you open no port on your router.
 4. The script prints an access key. In the demo, open Proxy settings, pick
    Custom proxy, and enter the tunnel's public URL and the key.
 
+The script accepts Node.js 22.23.4, 24.22.1 or 26.12.1 and newer releases of
+those lines (the floors are `NODE_FLOORS` in `setup.sh`). Older releases, odd
+versions and end-of-life lines have unfixed security bugs, so the script
+refuses them. When Node.js is missing or too old, it installs Node.js 24 from
+NodeSource's apt repository and pins it above Debian's `nodejs`.
+
 The script also takes `--origins LIST` (default
 `https://yt-dlp-wasm.project516.dev`), `--port N` (default 8787), `--ref REF`
 (the git ref to download from, default `master`) and `--uninstall`. Running it
@@ -107,7 +113,9 @@ downloads `worker.js`, `node.mjs` and `setup.sh` from the saved ref into a temp
 directory, checks them with `node --check` and `bash -n`, and only then
 replaces the installed copies in `/opt/yt-dlp-wasm-proxy`. It restarts the
 service when the proxy files changed, and puts the old files back if the new
-ones do not start. A failed check or download changes nothing. The update keeps
+ones do not start. A failed check or download changes nothing. The update also
+stops when Node.js is below the floor, and running the installer again fixes
+that. The update keeps
 your config and does not touch the tunnel.
 
 - `sudo /opt/yt-dlp-wasm-proxy/setup.sh --update` updates now.

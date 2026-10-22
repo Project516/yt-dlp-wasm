@@ -12,6 +12,11 @@ UPDATE_UNIT_FILE=/etc/systemd/system/$SERVICE-update.service
 UPDATE_TIMER_FILE=/etc/systemd/system/$SERVICE-update.timer
 RAW_URL=https://raw.githubusercontent.com/Project516/yt-dlp-wasm
 DEFAULT_ORIGINS=https://yt-dlp-wasm.project516.dev
+# Lowest patched Node.js release of each supported line. Odd and EOL majors are
+# refused. Raise these after a Node security release, and NODESOURCE_LINE with
+# the newest LTS.
+NODE_FLOORS="22.23.4 24.22.1 26.12.1"
+NODESOURCE_LINE=24
 
 tunnel_token=
 origins=
@@ -141,16 +146,52 @@ apt_install() {
   apt-get install -y --no-install-recommends "$@" </dev/null
 }
 
-node_major() {
-  node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0
+node_supported() {
+  local version floor
+  version=$("${1:-node}" -p 'process.versions.node' 2>/dev/null) || return 1
+  for floor in $NODE_FLOORS; do
+    [ "${floor%%.*}" = "${version%%.*}" ] || continue
+    [ "$(printf '%s\n%s\n' "$floor" "$version" | sort -V | head -n 1)" = "$floor" ]
+    return
+  done
+  return 1
+}
+
+node_required_message() {
+  echo "a patched Node.js is required (one of $NODE_FLOORS or newer in the same line), found $("${1:-node}" -v 2>/dev/null || echo none)"
+}
+
+# Debian's own nodejs is an unpatched release line, so NodeSource's wins.
+add_nodesource() {
+  apt_install ca-certificates curl gnupg
+  install -d -m 755 /etc/apt/keyrings
+  curl -fsSL --retry 3 --max-time 60 https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key |
+    gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
+  chmod 644 /etc/apt/keyrings/nodesource.gpg
+  cat >/etc/apt/sources.list.d/nodesource.sources <<SOURCE
+Types: deb
+URIs: https://deb.nodesource.com/node_$NODESOURCE_LINE.x
+Suites: nodistro
+Components: main
+Signed-By: /etc/apt/keyrings/nodesource.gpg
+SOURCE
+  cat >/etc/apt/preferences.d/nodesource <<PIN
+Package: nodejs
+Pin: origin deb.nodesource.com
+Pin-Priority: 600
+PIN
+  apt_updated=false
 }
 
 install_node() {
   command -v curl >/dev/null 2>&1 || apt_install curl ca-certificates
-  if [ "$(node_major)" -lt 18 ]; then
+  if ! node_supported; then
+    add_nodesource
     apt_install nodejs
+    PATH=/usr/bin:$PATH
+    hash -r
   fi
-  [ "$(node_major)" -ge 18 ] || die "Node.js 18 or newer is required, found $(node -v 2>/dev/null || echo none). Install a newer nodejs, then run this again."
+  node_supported || die "$(node_required_message). Install one, then run this again."
   node_bin=$(readlink -f "$(command -v node)")
   case $node_bin in
     /root/* | /home/*) die "node is at $node_bin, which the service cannot read. Install nodejs with apt." ;;
@@ -186,10 +227,10 @@ fetch_files() {
       *) curl -fsSL --retry 3 --max-time 60 "$base/$file" -o "$tmp_dir/new/$file" ;;
     esac
   done
-  # worker.js is an ES module, and Node 18 needs this to load it
+  # worker.js is an ES module
   echo '{"type":"module"}' >"$tmp_dir/new/package.json"
   for file in worker.js node.mjs; do
-    node --check "$tmp_dir/new/$file" || die "the downloaded $file is not valid JavaScript, nothing was changed"
+    "$node_bin" --check "$tmp_dir/new/$file" || die "the downloaded $file is not valid JavaScript, nothing was changed"
   done
   bash -n "$tmp_dir/new/setup.sh" || die "the downloaded setup.sh is not valid, nothing was changed"
 }
@@ -336,7 +377,8 @@ update_proxy() {
   { [ -z "$tunnel_token" ] && [ -z "$origins" ] && [ -z "$port" ] && [ -z "$ref" ] && [ -z "$auto_update" ]; } ||
     die "--update takes no other option. Run the installer again to change settings."
   load_settings
-  [ "$(node_major)" -ge 18 ] || die "Node.js 18 or newer is required"
+  node_bin=$(sed -n 's/^ExecStart=\([^ ]*\) .*/\1/p' "$UNIT_FILE")
+  node_supported "$node_bin" || die "$(node_required_message "$node_bin"). Run the installer again to install one."
   install_files
   if [ "$files_changed" = false ]; then
     echo "$SERVICE is up to date."
