@@ -89,7 +89,7 @@ run single test files only, wrapped in the memguard script.
   project516-review-bot may approve. See Review. These checks must pass: Check
   workflows, Run zizmor, Core test, Code check, Core tests (Pyodide), Library
   tests (Node.js), Library tests (Chromium), Demo tests (Chromium), Proxy tests
-  (Node.js) (18), Proxy tests (Node.js) (26) and Proxy setup (Linux arm64).
+  (Node.js) (24), Proxy tests (Node.js) (26) and Proxy setup (Linux arm64).
   Admins can bypass it for PRs only, so nothing can be pushed to master
   directly. When a required check is renamed, update the ruleset.
 

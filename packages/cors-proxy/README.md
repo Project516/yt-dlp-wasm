@@ -96,7 +96,9 @@ The script accepts Node.js 22.23.4, 24.22.1 or 26.12.1 and newer releases of
 those lines (the floors are `NODE_FLOORS` in `setup.sh`). Older releases, odd
 versions and end-of-life lines have unfixed security bugs, so the script
 refuses them. When Node.js is missing or too old, it installs Node.js 24 from
-NodeSource's apt repository and pins it above Debian's `nodejs`.
+NodeSource's apt repository and pins it above Debian's `nodejs`. NodeSource has
+no armhf package, so on armhf install a patched Node.js yourself first, for
+example from nodejs.org into `/usr/local`.
 
 The script also takes `--origins LIST` (default
 `https://yt-dlp-wasm.project516.dev`), `--port N` (default 8787), `--ref REF`
