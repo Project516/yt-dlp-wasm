@@ -186,6 +186,10 @@ PIN
 install_node() {
   command -v curl >/dev/null 2>&1 || apt_install curl ca-certificates
   if ! node_supported; then
+    case $(dpkg --print-architecture) in
+      amd64 | arm64) ;;
+      *) die "$(node_required_message). NodeSource has no package for this architecture, so install a patched Node.js yourself, then run this again." ;;
+    esac
     add_nodesource
     apt_install nodejs
     PATH=/usr/bin:$PATH
