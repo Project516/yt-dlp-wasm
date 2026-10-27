@@ -1,8 +1,7 @@
 {
   "pypi": [
     "mutagen==1.48.1",
-    "websockets==16.1.1 ; python_full_version < '3.11'",
-    "websockets==17.2 ; python_full_version >= '3.11'",
+    "websockets==17.3",
     "yt-dlp-ejs==0.8.0"
   ]
 }
