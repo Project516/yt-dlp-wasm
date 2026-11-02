@@ -187,7 +187,7 @@ importers:
 
   packages/yt-dlp-wasm:
     dependencies:
-      '@project516/ffmpeg-wasm-core':
+      '@project516/ffmpeg-wasm-core-jspi':
         specifier: 0.18.0
         version: 0.18.0
       pyodide:
@@ -751,9 +751,9 @@ packages:
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
 
-  '@project516/ffmpeg-wasm-core@0.18.0':
-    resolution: {integrity: sha512-UGni1fpHT2MGFx2X3BgoKdbFiqXRx1XmyQ/NDY8eWzI502MAAOtuHFb0O6R5O0Gb/GI/NDPpG9PKTThZtA3vvA==}
-    engines: {node: '>=20'}
+  '@project516/ffmpeg-wasm-core-jspi@0.18.0':
+    resolution: {integrity: sha512-IoeD4L9AKAU6ZKzNWZS6ciP/AZyBnP+eDkmkku+ZlpUgy0A+fkWJEKGGT7BZERvEJ2gH/6zgUicfeUSPVd8fwg==}
+    engines: {node: '>=24'}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     resolution: {integrity: sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A==}
@@ -1472,7 +1472,7 @@ snapshots:
 
   '@poppinss/exception@1.2.3': {}
 
-  '@project516/ffmpeg-wasm-core@0.18.0': {}
+  '@project516/ffmpeg-wasm-core-jspi@0.18.0': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     optional: true

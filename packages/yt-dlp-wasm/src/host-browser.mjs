@@ -3,7 +3,7 @@
 import { coreFactory, createFfmpegRunner } from './ffmpeg-bridge.mjs';
 import { FFMPEG_CORE_VERSION } from './versions.mjs';
 
-const CORE_URL = `https://cdn.jsdelivr.net/npm/@project516/ffmpeg-wasm-core@${FFMPEG_CORE_VERSION}/dist/esm`;
+const CORE_URL = `https://cdn.jsdelivr.net/npm/@project516/ffmpeg-wasm-core-jspi@${FFMPEG_CORE_VERSION}/dist/esm`;
 const JS_TIMEOUT_MS = 120_000;
 
 // Captures console.log as stdout and cuts off network access.

@@ -31,4 +31,4 @@ updates:
     ignore:
       - dependency-name: pyodide
         update-types: ["version-update:semver-major"]
-      - dependency-name: "@project516/ffmpeg-wasm-core"
+      - dependency-name: "@project516/ffmpeg-wasm-core-jspi"
