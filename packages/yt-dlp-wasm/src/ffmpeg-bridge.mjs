@@ -156,8 +156,14 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
         }
       }
     } finally {
-      for (const dir of dirs) {
-        for (const file of filesIn(coreFS, dir)) coreFS.unlink(file);
+      try {
+        for (const dir of dirs) {
+          for (const file of filesIn(coreFS, dir)) coreFS.unlink(file);
+        }
+      } catch (error) {
+        // A file left behind would look like output of the next command.
+        shared = undefined;
+        throw error;
       }
     }
     return { stdout: out.bytes(), stderr: err.bytes(), code: code < 0 ? 1 : code };

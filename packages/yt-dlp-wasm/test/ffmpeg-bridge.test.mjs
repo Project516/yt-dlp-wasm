@@ -67,3 +67,15 @@ test('a command that throws gets a new core next time', async () => {
   assert.match(decode(next.stdout), /ffmpeg version/);
   assert.equal(cores.length, 2);
 });
+
+test('a failed cleanup gets a new core next time', async () => {
+  const { run, cores } = runner((core, index) => {
+    if (index === 0) core.FS.unlink = () => { throw new Error('unlink failed'); };
+    return core;
+  });
+  const args = ['-f', 'lavfi', '-i', 'testsrc=duration=0.1:size=32x32', 'cleanup.mp4'];
+  await assert.rejects(run('ffmpeg', args, '/work', new Uint8Array()), /unlink failed/);
+  assert.equal((await run('ffmpeg', args, '/work', new Uint8Array())).code, 0);
+  assert.equal(cores.length, 2);
+  assert.deepEqual(cores[1].FS.readdir('/work'), ['.', '..']);
+});
