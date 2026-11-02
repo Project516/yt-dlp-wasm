@@ -59,7 +59,13 @@ export async function createYtDlp(options = {}) {
   const wheel = await wheelName();
   py.FS.mkdirTree(WHEEL_MOUNT);
   py.mountNodeFS(WHEEL_MOUNT, fileURLToPath(DIST));
-  const engine = await createEngine({ py, wheel: `emfs:${WHEEL_MOUNT}/${wheel}`, createHost, cookies });
+  let host;
+  const engine = await createEngine({
+    py,
+    wheel: `emfs:${WHEEL_MOUNT}/${wheel}`,
+    createHost: (hostOptions) => (host = createHost(hostOptions)),
+    cookies,
+  });
 
   // Files written by Python land on the real filesystem through a mount at the same path
   const mounted = [];
@@ -99,10 +105,12 @@ export async function createYtDlp(options = {}) {
     async close() {
       closed = true;
       await engine.idle();
+      host.run_ffmpeg.release();
     },
     // Python cannot be interrupted in process. This stops accepting calls.
     terminate() {
       closed = true;
+      host.run_ffmpeg.release();
     },
   };
 }

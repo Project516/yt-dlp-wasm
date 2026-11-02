@@ -79,3 +79,12 @@ test('a failed cleanup gets a new core next time', async () => {
   assert.equal(cores.length, 2);
   assert.deepEqual(cores[1].FS.readdir('/work'), ['.', '..']);
 });
+
+test('release drops the core, and later commands keep none', async () => {
+  const { run, cores } = runner();
+  assert.equal((await run('ffmpeg', ['-version'], '/work', new Uint8Array())).code, 0);
+  run.release();
+  assert.equal((await run('ffmpeg', ['-version'], '/work', new Uint8Array())).code, 0);
+  assert.equal((await run('ffmpeg', ['-version'], '/work', new Uint8Array())).code, 0);
+  assert.equal(cores.length, 3);
+});
