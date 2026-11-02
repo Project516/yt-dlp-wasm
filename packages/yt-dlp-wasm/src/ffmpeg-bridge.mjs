@@ -81,7 +81,8 @@ function concatEntries(list, dir) {
 export function createFfmpegRunner({ FS: pyFS, createCore }) {
   let io;
   let shared;
-  return async function run(program, args, cwd, stdin) {
+  let released = false;
+  async function run(program, args, cwd, stdin) {
     const out = collector();
     const err = collector();
     let stdinPos = 0;
@@ -166,6 +167,13 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
         throw error;
       }
     }
+    if (released) shared = undefined;
     return { stdout: out.bytes(), stderr: err.bytes(), code: code < 0 ? 1 : code };
+  }
+  // Frees the core. A command that still runs after this gets a core of its own.
+  run.release = () => {
+    released = true;
+    shared = undefined;
   };
+  return run;
 }
