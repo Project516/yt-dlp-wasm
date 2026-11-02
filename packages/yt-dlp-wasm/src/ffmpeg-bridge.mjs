@@ -1,7 +1,9 @@
 // Runs ffmpeg and ffprobe on ffmpeg.wasm for `yt_dlp_host.run_ffmpeg`. The core
-// has its own filesystem, so each command gets a fresh core instance holding
-// copies of the files it names, at the same paths. Files the command creates
-// are copied back to the Pyodide filesystem.
+// has its own filesystem, so each command copies in the files it names, at the
+// same paths. Files the command creates are copied back to the Pyodide
+// filesystem and every file is removed from the core afterwards.
+// Commands share one core: a dropped core's memory waits for a GC, which does
+// not run often enough to stop several of them piling up.
 
 const PROGRAMS = { ffmpeg: 'exec', ffprobe: 'ffprobe' };
 
@@ -77,14 +79,25 @@ function concatEntries(list, dir) {
 }
 
 export function createFfmpegRunner({ FS: pyFS, createCore }) {
+  let io;
+  let shared;
   return async function run(program, args, cwd, stdin) {
     const out = collector();
     const err = collector();
     let stdinPos = 0;
-    const core = await createCore({
+    io = {
       stdin: () => (stdinPos < stdin.length ? stdin[stdinPos++] : null),
       stdout: (byte) => out.write(byte & 0xff),
       stderr: (byte) => err.write(byte & 0xff),
+    };
+    shared ??= createCore({
+      stdin: () => io.stdin(),
+      stdout: (byte) => io.stdout(byte),
+      stderr: (byte) => io.stderr(byte),
+    });
+    const core = await shared.catch((error) => {
+      shared = undefined;
+      throw error;
     });
     const coreFS = core.FS;
     const dirs = new Set();
@@ -127,6 +140,10 @@ export function createFfmpegRunner({ FS: pyFS, createCore }) {
     } catch (error) {
       for (const byte of new TextEncoder().encode(`${error}\n`)) err.write(byte);
       code = 1;
+      // A trap can leave the core's memory in any state.
+      shared = undefined;
+    } finally {
+      core.reset();
     }
 
     try {
