@@ -30,8 +30,8 @@ export function createHost({ FS }) {
   let factory;
   const createCore = async (options) => {
     factory ??= (async () => {
-      const { default: createFFmpegCore } = await import('@project516/ffmpeg-wasm-core');
-      const wasm = await fs.readFile(new URL(import.meta.resolve('@project516/ffmpeg-wasm-core/wasm')));
+      const { default: createFFmpegCore } = await import('@project516/ffmpeg-wasm-core-jspi');
+      const wasm = await fs.readFile(new URL(import.meta.resolve('@project516/ffmpeg-wasm-core-jspi/wasm')));
       return coreFactory(createFFmpegCore, await WebAssembly.compile(wasm));
     })();
     return (await factory)(options);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import { before, test } from 'node:test';
-import createFFmpegCore from '@project516/ffmpeg-wasm-core';
+import createFFmpegCore from '@project516/ffmpeg-wasm-core-jspi';
 import { coreFactory, createFfmpegRunner } from '../src/ffmpeg-bridge.mjs';
 
 const decode = (bytes) => new TextDecoder().decode(bytes);
@@ -10,7 +10,7 @@ let factory;
 let pyFS;
 
 before(async () => {
-  const wasm = await fs.readFile(new URL(import.meta.resolve('@project516/ffmpeg-wasm-core/wasm')));
+  const wasm = await fs.readFile(new URL(import.meta.resolve('@project516/ffmpeg-wasm-core-jspi/wasm')));
   factory = coreFactory(createFFmpegCore, await WebAssembly.compile(wasm));
   pyFS = (await factory({})).FS;
   pyFS.mkdirTree('/work');

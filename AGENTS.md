@@ -152,7 +152,7 @@ both `pnpm build` and the sync run it. A dependency that upstream adds fails
 `pyproject.toml`, `uv.lock` and `bundle/requirements/` and each sync brings the
 bumps. Close a Dependabot PR that touches those files, security PRs included.
 Only the npm packages get Dependabot PRs. `pyodide` majors and
-`@project516/ffmpeg-wasm-core` are bumped by hand with feature tests.
+`@project516/ffmpeg-wasm-core-jspi` are bumped by hand with feature tests.
 
 project516-review-bot skips Dependabot PRs, but the ruleset still needs its
 approval. Read the release notes against how the repo uses each package, then
