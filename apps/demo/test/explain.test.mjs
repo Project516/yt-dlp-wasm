@@ -13,9 +13,17 @@ test('the bot check suggests loading cookies when none are loaded', () => {
 
 test('the bot check suggests fresh cookies when some are loaded', () => {
   const { detail } = explain(BOT, { usingDemoProxy: false, hasCookies: true });
-  assert.match(detail, /your proxy/);
+  assert.match(detail, /the addresses your proxy fetches from/);
   assert.doesNotMatch(detail, /shared/);
   assert.match(detail, /fresh cookies/);
+});
+
+test('proxy refusals only suggest a custom proxy to demo proxy users', () => {
+  for (const status of ['429: Rate limit exceeded', '403: Origin not allowed']) {
+    const error = new Error(`ERROR: CORS proxy error ${status}`);
+    assert.match(explain(error, { usingDemoProxy: true }).detail, /use a custom proxy/i);
+    assert.doesNotMatch(explain(error, { usingDemoProxy: false }).detail, /custom proxy/);
+  }
 });
 
 test('a bad cookies file gets its own message', () => {
