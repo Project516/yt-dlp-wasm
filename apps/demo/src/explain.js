@@ -7,6 +7,7 @@ export function explain(error, { usingDemoProxy, hasCookies = false }) {
     .replace(/^ERROR:\s*/, '')
     .trim();
   const proxy = usingDemoProxy ? 'the demo proxy' : 'your proxy';
+  const addresses = usingDemoProxy ? 'the shared addresses the demo proxy fetches from' : 'the address your proxy fetches from';
 
   if (raw.startsWith(JSPI)) return { title: 'This browser is not supported', detail: raw };
   if (/CORS proxy error 429/.test(raw)) {
@@ -25,15 +26,15 @@ export function explain(error, { usingDemoProxy, hasCookies = false }) {
     return {
       title: 'The site asked for a bot check',
       detail: hasCookies
-        ? `It still flags the shared addresses ${proxy} fetches from. Export fresh cookies from a signed-in browser, or try again in a minute.`
-        : `It flags the shared addresses ${proxy} fetches from on some requests. Try again in a minute, or load a cookies file from a signed-in account in the Cookies settings.`,
+        ? `It still flags ${addresses}. Export fresh cookies from a signed-in browser, or try again in a minute.`
+        : `It flags ${addresses} on some requests. Try again in a minute, or load a cookies file from a signed-in account in the Cookies settings.`,
     };
   }
   if (/does not look like a Netscape format cookies file/.test(raw)) {
     return { title: 'That is not a cookies.txt file', detail: 'Export the cookies again in the Netscape cookies.txt format, or clear them in the Cookies settings.' };
   }
   if (/HTTP Error 429/.test(raw)) {
-    return { title: 'The site is rate limiting the proxy', detail: `It limits the shared addresses ${proxy} fetches from. Try again in a minute.` };
+    return { title: 'The site is rate limiting the proxy', detail: `It limits ${addresses}. Try again in a minute.` };
   }
   if (/out of memory|RangeError|worker failed|allocation/i.test(raw)) {
     return { title: 'The browser ran out of memory', detail: 'This video is too large for this device. Try audio only.' };
